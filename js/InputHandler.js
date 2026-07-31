@@ -7,7 +7,8 @@ class InputHandler {
         const gameKeys = ['Space', 'KeyA', 'KeyD', 'KeyW', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
 
         window.addEventListener('keydown', (e) => {
-            if (gameKeys.includes(e.code)) {
+            const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT');
+            if (gameKeys.includes(e.code) && !typing) {
                 e.preventDefault();
             }
             if (e.repeat) return;

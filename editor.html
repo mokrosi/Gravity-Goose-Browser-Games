@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravity Goose — Level Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #090d16;
+            background-image: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
+            color: #f8fafc;
+            font-family: 'Press Start 2P', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #06b6d4;
+            text-shadow: 2px 2px 0 #000, 0 0 12px #06b6d4;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        #toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: rgba(30, 27, 75, 0.8);
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-label {
+            font-size: 9px;
+            color: #facc15;
+            margin-right: 2px;
+        }
+
+        .brush-btn {
+            width: 46px;
+            height: 46px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 16px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            transition: all 0.12s ease;
+        }
+
+        .brush-btn .glyph { font-size: 15px; line-height: 1; }
+        .brush-btn .tag { font-size: 7px; color: #64748b; }
+
+        .brush-btn.active {
+            border-color: #06b6d4;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+            background: #1e293b;
+        }
+
+        .brush-btn:hover { border-color: #94a3b8; }
+
+        select, input[type="number"] {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .act-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            padding: 10px 14px;
+            background: #06b6d4;
+            color: #090d16;
+            border: none;
+            border-bottom: 3px solid #0891b2;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+
+        .act-btn:hover { background: #fff; }
+        .act-btn.danger { background: #f43f5e; border-bottom-color: #be123c; }
+        .act-btn.danger:hover { background: #fff; }
+
+        #grid-wrap {
+            overflow: auto;
+            max-height: 55vh;
+            background: #0f172a;
+            border: 3px solid #334155;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        #grid {
+            display: grid;
+            width: max-content;
+            user-select: none;
+        }
+
+        .cell {
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: crosshair;
+            color: #e2e8f0;
+            line-height: 1;
+        }
+
+        .cell.air { background: #0b1220; }
+        .cell.air::after { content: '\00B7'; color: #1e293b; font-size: 8px; }
+        .cell.solid { background: #1d2d50; border-color: #2b4a7a; }
+        .cell.solid::after { content: '#'; color: #60a5fa; }
+        .cell.spike { background: #3a0d18; border-color: #7f1d1d; }
+        .cell.spike::after { content: '\25B2'; color: #f87171; }
+        .cell.spawn { background: #14532d; }
+        .cell.spawn::after { content: 'P'; color: #4ade80; }
+        .cell.bread { background: #422006; }
+        .cell.bread::after { content: '\1F35E'; }
+        .cell.crumb { background: #4a3b04; }
+        .cell.crumb::after { content: '\2605'; color: #facc15; }
+        .cell.enemy { background: #4a044e; }
+        .cell.enemy::after { content: '\1F438'; }
+
+        .cell:hover { outline: 2px solid #06b6d4; outline-offset: -2px; }
+
+        #json-wrap { margin-bottom: 16px; }
+
+        #json-wrap h2 {
+            font-size: 12px;
+            color: #facc15;
+            margin-bottom: 8px;
+        }
+
+        #json-output {
+            width: 100%;
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #020617;
+            color: #a5f3fc;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            resize: vertical;
+        }
+
+        #status {
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.8;
+            min-height: 20px;
+        }
+
+        #status .ok { color: #4ade80; }
+        #status .warn { color: #facc15; }
+        #status .err { color: #f87171; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>GRAVITY GOOSE — LEVEL EDITOR</h1>
+        <p>Paint a level, export the JSON array, then paste it into <code>js/LevelManager.js</code> → <code>this.levels</code>.</p>
+    </header>
+
+    <div id="toolbar">
+        <div class="group">
+            <span class="group-label">BRUSH</span>
+            <button class="brush-btn active" data-char=" "><span class="glyph">·</span><span class="tag">AIR</span></button>
+            <button class="brush-btn" data-char="#"><span class="glyph">#</span><span class="tag">SOLID</span></button>
+            <button class="brush-btn" data-char="^"><span class="glyph">▲</span><span class="tag">SPIKE</span></button>
+            <button class="brush-btn" data-char="P"><span class="glyph">P</span><span class="tag">SPAWN</span></button>
+            <button class="brush-btn" data-char="B"><span class="glyph">🍞</span><span class="tag">BREAD</span></button>
+            <button class="brush-btn" data-char="c"><span class="glyph">★</span><span class="tag">CRUMB</span></button>
+            <button class="brush-btn" data-char="E"><span class="glyph">🐸</span><span class="tag">FROG</span></button>
+        </div>
+
+        <div class="group">
+            <span class="group-label">SOURCE</span>
+            <select id="level-source">
+                <option value="blank">New blank level</option>
+            </select>
+            <button class="act-btn" id="btn-load">LOAD</button>
+        </div>
+
+        <div class="group">
+            <span class="group-label">SIZE</span>
+            <input type="number" id="width-input" min="6" max="80" value="32">
+            <span>×</span>
+            <input type="number" id="height-input" min="6" max="30" value="11">
+            <button class="act-btn" id="btn-resize">RESIZE</button>
+            <button class="act-btn" id="btn-borders">FILL BORDERS</button>
+        </div>
+
+        <div class="group">
+            <button class="act-btn" id="btn-validate">VALIDATE</button>
+            <button class="act-btn" id="btn-export">EXPORT JSON</button>
+            <button class="act-btn" id="btn-copy">COPY</button>
+            <button class="act-btn" id="btn-import">LOAD FROM JSON</button>
+            <button class="act-btn danger" id="btn-clear">CLEAR</button>
+        </div>
+    </div>
+
+    <div id="grid-wrap">
+        <div id="grid"></div>
+    </div>
+
+    <div id="json-wrap">
+        <h2>EXPORTED / IMPORTED JSON</h2>
+        <textarea id="json-output" spellcheck="false" placeholder="Click EXPORT JSON to fill this with a level matrix, or paste a matrix here and click LOAD FROM JSON."></textarea>
+    </div>
+
+    <div id="status"></div>
+
+    <script src="js/LevelManager.js"></script>
+    <script>
+        const gridEl = document.getElementById('grid');
+        const statusEl = document.getElementById('status');
+        const jsonEl = document.getElementById('json-output');
+        const widthInput = document.getElementById('width-input');
+        const heightInput = document.getElementById('height-input');
+        const sourceSelect = document.getElementById('level-source');
+
+        const LEVELS = new LevelManager().levels;
+        const CLASS_MAP = { ' ': 'air', '#': 'solid', '^': 'spike', 'P': 'spawn', 'B': 'bread', 'c': 'crumb', 'E': 'enemy' };
+        const LEGEND = [' ', '#', '^', 'P', 'B', 'c', 'E'];
+
+        let brush = ' ';
+        let grid = [];
+        let cols = 32;
+        let rows = 11;
+        let painting = false;
+
+        function setStatus(lines) {
+            statusEl.innerHTML = lines.map((l) => `<span class="${l.kind}">${l.text}</span>`).join('<br>');
+        }
+
+        function resize(w, h) {
+            const old = grid;
+            cols = Math.max(6, Math.min(80, w));
+            rows = Math.max(6, Math.min(30, h));
+            grid = [];
+            for (let y = 0; y < rows; y++) {
+                grid[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    grid[y][x] = (old[y] && old[y][x]) || ' ';
+                }
+            }
+            render();
+        }
+
+        function fillBorders() {
+            for (let x = 0; x < cols; x++) {
+                grid[0][x] = '#';
+                grid[rows - 1][x] = '#';
+            }
+            for (let y = 0; y < rows; y++) {
+                grid[y][0] = '#';
+                grid[y][cols - 1] = '#';
+            }
+            render();
+        }
+
+        function clearLevel() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) grid[y][x] = ' ';
+            }
+            render();
+        }
+
+        function loadFromStrings(strings) {
+            rows = strings.length;
+            cols = strings[0].length;
+            grid = strings.map((row) => row.split(''));
+            widthInput.value = cols;
+            heightInput.value = rows;
+            render();
+        }
+
+        function render() {
+            gridEl.style.gridTemplateColumns = `repeat(${cols}, 34px)`;
+            gridEl.innerHTML = '';
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell ' + (CLASS_MAP[grid[y][x]] || 'air');
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+
+        function paintAt(x, y) {
+            if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+            grid[y][x] = brush;
+            const cell = gridEl.children[y * cols + x];
+            cell.className = 'cell ' + (CLASS_MAP[brush] || 'air');
+        }
+
+        function exportJson() {
+            const lines = grid.map((row) => '"' + row.join('') + '"');
+            return '[\n    ' + lines.join(',\n    ') + '\n]';
+        }
+
+        function validate() {
+            const problems = [];
+            const widths = new Set(grid.map((r) => r.length));
+            if (widths.size > 1) problems.push({ kind: 'err', text: 'Rows have different lengths!' });
+            const spawns = grid.flat().filter((c) => c === 'P').length;
+            if (spawns !== 1) problems.push({ kind: 'err', text: `Need exactly 1 spawn point (P) — found ${spawns}.` });
+            const breads = grid.flat().filter((c) => c === 'B').length;
+            if (breads < 1) problems.push({ kind: 'err', text: 'Need at least 1 bread (B) to finish the level.' });
+            for (let x = 0; x < cols; x++) {
+                if (grid[0][x] !== '#' || grid[rows - 1][x] !== '#') {
+                    problems.push({ kind: 'warn', text: 'Top/bottom border is not fully solid — the goose can escape.' });
+                    break;
+                }
+            }
+            for (let y = 0; y < rows; y++) {
+                if (grid[y][0] !== '#' || grid[y][cols - 1] !== '#') {
+                    problems.push({ kind: 'warn', text: 'Left/right border is not fully solid — the goose can escape.' });
+                    break;
+                }
+            }
+            if (problems.length === 0) {
+                problems.push({ kind: 'ok', text: 'Structure looks valid. Play-test it in the game to confirm reachability!' });
+            }
+            setStatus(problems);
+        }
+
+        document.querySelectorAll('.brush-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.brush-btn').forEach((b) => b.classList.remove('active'));
+                btn.classList.add('active');
+                brush = btn.dataset.char;
+            });
+        });
+
+        const levelManager = new LevelManager();
+        levelManager.levels.forEach((lvl, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `Level ${i + 1}`;
+            sourceSelect.appendChild(opt);
+        });
+        sourceSelect.value = 'blank';
+
+        document.getElementById('btn-load').addEventListener('click', () => {
+            if (sourceSelect.value === 'blank') {
+                clearLevel();
+                setStatus([{ kind: 'warn', text: 'Blank level created — use FILL BORDERS, then paint.' }]);
+            } else {
+                loadFromStrings(levelManager.levels[parseInt(sourceSelect.value, 10)]);
+                setStatus([{ kind: 'ok', text: `Loaded Level ${parseInt(sourceSelect.value, 10) + 1} — edit and re-export.` }]);
+            }
+        });
+
+        document.getElementById('btn-resize').addEventListener('click', () => {
+            resize(parseInt(widthInput.value, 10) || 32, parseInt(heightInput.value, 10) || 11);
+        });
+
+        document.getElementById('btn-borders').addEventListener('click', fillBorders);
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (confirm('Clear the whole grid?')) clearLevel();
+        });
+
+        document.getElementById('btn-validate').addEventListener('click', validate);
+
+        document.getElementById('btn-export').addEventListener('click', () => {
+            jsonEl.value = exportJson();
+            validate();
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            jsonEl.select();
+            document.execCommand('copy');
+            setStatus([{ kind: 'ok', text: 'JSON copied to clipboard.' }]);
+        });
+
+        document.getElementById('btn-import').addEventListener('click', () => {
+            try {
+                const parsed = JSON.parse(jsonEl.value);
+                if (!Array.isArray(parsed) || parsed.length === 0 || typeof parsed[0] !== 'string') {
+                    throw new Error('expected an array of strings');
+                }
+                loadFromStrings(parsed);
+                setStatus([{ kind: 'ok', text: `Imported ${parsed.length} rows. Edit and re-export if needed.` }]);
+            } catch (e) {
+                setStatus([{ kind: 'err', text: `Could not parse JSON: ${e.message}` }]);
+            }
+        });
+
+        gridEl.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            painting = true;
+            paintAt(parseInt(e.target.dataset.x, 10), parseInt(e.target.dataset.y, 10));
+        });
+
+        gridEl.addEventListener('mouseover', (e) => {
+            if (!painting || !e.target.dataset) return;
+            paintAt(parseInt(e.target.dataset.x, 10), parseInt(e.target.dataset.y, 10));
+        });
+
+        gridEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            brush = ' ';
+            document.querySelectorAll('.brush-btn').forEach((b) => b.classList.remove('active'));
+            document.querySelector('.brush-btn[data-char=" "]').classList.add('active');
+            paintAt(parseInt(e.target.dataset.x, 10), parseInt(e.target.dataset.y, 10));
+        });
+
+        window.addEventListener('mouseup', () => { painting = false; });
+
+        resize(32, 11);
+        fillBorders();
+        setStatus([{ kind: 'ok', text: 'Ready! Pick a brush and paint. Right-click erases.' }]);
+    </script>
+</body>
+</html>

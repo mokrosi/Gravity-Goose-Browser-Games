@@ -7,6 +7,7 @@ class AssetManager {
         // Generate procedural pixel sprites immediately as fallback defaults!
         this.images['player'] = SpriteGenerator.generatePlayerSprite();
         this.images['bread'] = SpriteGenerator.generateBreadSprite();
+        this.images['crumb'] = SpriteGenerator.generateCrumbSprite();
         this.images['enemy_frog'] = SpriteGenerator.generateFrogSprite();
         this.images['tileset'] = SpriteGenerator.generateTileSprite();
         this.images['spikes'] = SpriteGenerator.generateSpikeSprite();

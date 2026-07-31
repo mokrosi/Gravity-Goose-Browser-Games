@@ -76,6 +76,27 @@ class ParticleSystem {
         }
     }
 
+    emitCrumbCollect(x, y) {
+        // Bright golden sparkle burst for the bonus collectible
+        for (let i = 0; i < 16; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 140;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            const color = Math.random() > 0.5 ? '#FACC15' : '#FFF7CC';
+            this.particles.push(new Particle(x, y, vx, vy, color, 2 + Math.random() * 2.5, 0.45, 'spark'));
+        }
+    }
+
+    emitFootstep(x, y) {
+        // Small dust puff kicked up while sprinting
+        for (let i = 0; i < 3; i++) {
+            const vx = (Math.random() - 0.5) * 60;
+            const vy = -Math.random() * 40;
+            this.particles.push(new Particle(x, y, vx, vy, '#94A3B8', 2 + Math.random() * 2, 0.22, 'spark'));
+        }
+    }
+
     emitHurt(x, y) {
         // Feather explosion + Red sparks
         for (let i = 0; i < 15; i++) {

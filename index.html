@@ -14,7 +14,9 @@
             <div class="arcade-title">GRAVITY GOOSE</div>
             <div id="hud" class="hidden">
                 <div class="hud-item">LEVEL <span id="hud-level">1</span></div>
+                <div class="hud-item">TIME <span id="hud-time">00:00:000</span></div>
                 <div class="hud-item">BREAD 🍞 <span id="hud-score">0</span></div>
+                <div class="hud-item">CRUMBS <span id="hud-crumbs">0/0</span></div>
                 <div class="hud-item"><span id="hud-lives">❤️❤️❤️</span></div>
             </div>
         </div>
@@ -37,18 +39,51 @@
                         <p><span class="key">SPACE</span> Flip Gravity</p>
                     </div>
                     <button id="btn-start" class="btn">START GAME</button>
+                    <button id="btn-level-select" class="btn btn-ghost">LEVEL SELECT</button>
+                    <button id="btn-start-settings" class="btn btn-ghost">SETTINGS</button>
+                </div>
+
+                <!-- Level Select Screen -->
+                <div id="level-select-screen" class="screen hidden">
+                    <h1 class="title">SELECT LEVEL</h1>
+                    <p class="subtitle">New runs always begin at Level 1. Unlock more by finishing levels.</p>
+                    <div id="level-select-grid"></div>
+                    <p class="subtitle stats-line" id="level-select-stats"></p>
+                    <button id="btn-level-select-back" class="btn btn-ghost">BACK</button>
                 </div>
 
                 <!-- Pause Menu -->
                 <div id="pause-screen" class="screen hidden">
                     <h1 class="title">PAUSED</h1>
                     <button id="btn-resume" class="btn">RESUME</button>
+                    <button id="btn-open-settings" class="btn btn-ghost">SETTINGS</button>
+                    <button id="btn-quit" class="btn btn-ghost">QUIT TO MENU</button>
+                </div>
+
+                <!-- Settings Menu -->
+                <div id="settings-screen" class="screen hidden">
+                    <h1 class="title">SETTINGS</h1>
+                    <div class="settings-row">
+                        <label class="settings-label" for="sfx-volume">SFX VOLUME</label>
+                        <input type="range" id="sfx-volume" min="0" max="100" value="80">
+                        <span id="sfx-volume-value" class="settings-value">80%</span>
+                    </div>
+                    <div class="settings-row">
+                        <label class="settings-label" for="screen-shake-toggle">SCREEN SHAKE</label>
+                        <input type="checkbox" id="screen-shake-toggle" checked>
+                        <span class="settings-hint">(off = motion-sickness friendly)</span>
+                    </div>
+                    <button id="btn-reset-records" class="btn btn-danger">RESET RECORDS</button>
+                    <button id="btn-settings-back" class="btn btn-ghost">BACK</button>
                 </div>
 
                 <!-- Level Complete Screen -->
                 <div id="level-complete-screen" class="screen hidden">
                     <h1 class="title win">LEVEL CLEARED!</h1>
                     <p class="subtitle">Bread Recovered: <span id="level-bread-score" class="highlight">0</span></p>
+                    <p class="subtitle">Breadcrumbs: <span id="level-crumb-score" class="highlight">0/0</span></p>
+                    <p class="subtitle">Level Time: <span id="level-time" class="highlight">00:00:000</span></p>
+                    <p class="subtitle"><span id="level-best" class="highlight"></span></p>
                     <button id="btn-next-level" class="btn">NEXT LEVEL</button>
                 </div>
 
@@ -63,6 +98,9 @@
                 <div id="victory-screen" class="screen hidden">
                     <h1 class="title win">VICTORY!</h1>
                     <p class="subtitle">You recovered all the bread & defeated the frog armada!</p>
+                    <p class="subtitle">Final Time: <span id="final-time" class="highlight">00:00:000</span></p>
+                    <p class="subtitle">Breadcrumbs Collected: <span id="final-crumbs" class="highlight">0/0</span> (<span id="final-percent" class="highlight">0%</span>)</p>
+                    <p class="subtitle"><span id="final-best" class="highlight"></span></p>
                     <button id="btn-play-again" class="btn">PLAY AGAIN</button>
                 </div>
 
@@ -73,9 +111,11 @@
     <!-- Scripts -->
     <script src="js/SpriteGenerator.js"></script>
     <script src="js/SoundManager.js"></script>
+    <script src="js/SaveManager.js"></script>
     <script src="js/ParticleSystem.js"></script>
     <script src="js/entities/Entity.js"></script>
     <script src="js/entities/Item.js"></script>
+    <script src="js/entities/Crumb.js"></script>
     <script src="js/entities/Enemy.js"></script>
     <script src="js/Player.js"></script>
     <script src="js/Physics.js"></script>

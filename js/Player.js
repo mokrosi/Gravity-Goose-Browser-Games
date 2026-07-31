@@ -24,6 +24,10 @@ class Player extends Entity {
         return Math.sign(this.gravity);
     }
 
+    get isRunningFast() {
+        return this.onGround && Math.abs(this.vx) > Player.MAX_SPEED * 0.8;
+    }
+
     flipGravity(soundManager, particleSystem) {
         this.gravity = -this.gravity;
         this.onGround = false;

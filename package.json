@@ -1,0 +1,24 @@
+{
+  "name": "gravity-goose-bread-robbery",
+  "version": "1.0.0",
+  "description": "A vanilla JS HTML5 Canvas platformer with anti-gravity mechanics. Steal back the bread, goose!",
+  "keywords": [
+    "game",
+    "platformer",
+    "canvas",
+    "vanilla-js",
+    "anti-gravity"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_USERNAME/YOUR_REPO.git"
+  },
+  "scripts": {
+    "test": "node tests/physics.test.js && node tests/player.test.js && node tests/save.test.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

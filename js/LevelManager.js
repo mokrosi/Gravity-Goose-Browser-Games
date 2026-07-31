@@ -7,6 +7,7 @@ class LevelManager {
         this.grid = [];
         this.entities = [];
         this.items = [];
+        this.crumbs = [];
         this.hazards = []; // Spikes rects
         this.playerStart = { x: 50, y: 50 };
 
@@ -15,7 +16,7 @@ class LevelManager {
             [
                 "################################",
                 "#                              #",
-                "#                              #",
+                "#       c                      #",
                 "#      ^                       #",
                 "#     ###                      #",
                 "#                              #",
@@ -31,7 +32,7 @@ class LevelManager {
                 "#######^^^^^^^^^^^#######      #",
                 "#######           #######      #",
                 "#######           #######      #",
-                "#######           #######      #",
+                "#######   c       #######      #",
                 "#P                             #",
                 "#                              #",
                 "#######   #################    #",
@@ -43,12 +44,12 @@ class LevelManager {
             [
                 "########################################",
                 "#                                      #",
-                "#                                      #",
+                "#                           c          #",
                 "#      E                  E            #",
                 "#    #####              #####          #",
                 "#            E                         #",
                 "#          #####                       #",
-                "#                                      #",
+                "#                        c             #",
                 "#P                  ^^^^               #",
                 "####  ^^^^         ######      B       #",
                 "########################################"
@@ -56,10 +57,10 @@ class LevelManager {
             // Level 4: The Inverted Gravity Maze
             [
                 "########################################",
-                "#P #^^^^^^^^#        #^^^^^^^^#        #",
+                "#P #^^^^^^^^#  c     #^^^^^^^^#        #",
                 "#  #   E    #        #   E    #        #",
                 "#  ######   ######   ######   ######   #",
-                "#                                      #",
+                "#               c                      #",
                 "#  ######   ######   ######   ######   #",
                 "#       #        #        #        #   #",
                 "#       #   E    #   E    #        # B #",
@@ -70,9 +71,9 @@ class LevelManager {
             [
                 "################################################",
                 "#^^^^^^^^^^^^^^^#^^^^^^^^^^^^^#^^^^^^^^^^^^^^^^#",
-                "#   E   E       #      E      #        E   E   #",
+                "#   E   E       #      Ec     #        E   E   #",
                 "###### ######   ##### #####   ###### #######   #",
-                "#                                              #",
+                "#                                       c      #",
                 "#   E   E       #      E      #                #",
                 "###### ######   ##### #####   #      #######   #",
                 "#                                              #",
@@ -94,6 +95,7 @@ class LevelManager {
         this.grid = [];
         this.entities = [];
         this.items = [];
+        this.crumbs = [];
         this.hazards = [];
 
         for (let y = 0; y < this.height; y++) {
@@ -116,6 +118,8 @@ class LevelManager {
                         this.playerStart = { x: x * this.tileSize, y: y * this.tileSize };
                     } else if (char === 'B') {
                         this.items.push(new Item(x * this.tileSize + 4, y * this.tileSize + 4));
+                    } else if (char === 'c') {
+                        this.crumbs.push(new Crumb(x * this.tileSize + 6, y * this.tileSize + 6));
                     } else if (char === 'E') {
                         this.entities.push(new Enemy(x * this.tileSize, y * this.tileSize));
                     }

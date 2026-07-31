@@ -192,6 +192,42 @@ class SpriteGenerator {
         return canvas;
     }
 
+    static generateCrumbSprite() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        const gold = '#FACC15';
+        const goldDark = '#A16207';
+        const goldLight = '#FEF08A';
+        const sparkle = '#FFFFFF';
+
+        const p = (x, y, color) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 1, 1);
+        };
+
+        // Hexagonal golden crumb nugget
+        for (let y = 10; y <= 21; y++) {
+            const half = (y < 16) ? (y - 9) : (22 - y);
+            for (let x = 16 - half; x <= 16 + half; x++) {
+                p(x, y, (x === 16 - half || x === 16 + half || y === 21) ? goldDark : gold);
+            }
+        }
+
+        // Shine highlight
+        p(14, 12, goldLight); p(15, 12, goldLight); p(14, 13, goldLight); p(15, 13, goldLight);
+
+        // White sparkle glint (top right)
+        p(24, 7, sparkle); p(25, 7, sparkle); p(24, 6, sparkle); p(26, 8, sparkle);
+
+        // Faint glow dots around the nugget
+        p(5, 18, goldLight); p(4, 19, goldLight); p(27, 20, goldLight);
+
+        return canvas;
+    }
+
     static generateTileSprite() {
         const canvas = document.createElement('canvas');
         canvas.width = 32;

@@ -41,15 +41,19 @@ body {
     box-shadow: 
         0 0 30px rgba(6, 182, 212, 0.4),
         inset 0 0 20px rgba(0, 0, 0, 0.8);
-    max-width: 95vw;
+    /* Responsive: cap by viewport width, absolute size, or remaining height
+       while preserving the 4:3 canvas aspect ratio. */
+    width: min(96vw, 840px, calc((100vh - 150px) * 4 / 3));
 }
 
 /* Arcade Top Header & HUD */
 #arcade-header {
     width: 100%;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    row-gap: 10px;
     padding: 12px 20px;
     margin-bottom: 12px;
     background: rgba(30, 27, 75, 0.8);
@@ -59,7 +63,7 @@ body {
 }
 
 .arcade-title {
-    font-size: 16px;
+    font-size: 14px;
     color: var(--neon-pink);
     text-shadow: 2px 2px 0px #000, 0 0 8px var(--neon-pink);
     letter-spacing: 2px;
@@ -67,8 +71,9 @@ body {
 
 #hud {
     display: flex;
-    gap: 24px;
-    font-size: 14px;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    font-size: 12px;
     color: var(--neon-yellow);
     text-shadow: 2px 2px 0px #000;
 }
@@ -86,8 +91,9 @@ body {
 /* Canvas Box */
 #game-container {
     position: relative;
-    width: 800px;
-    height: 600px;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    height: auto;
     background-color: #0f172a;
     border: 4px solid #334155;
     border-radius: 8px;
@@ -100,6 +106,18 @@ body {
     display: block;
     width: 100%;
     height: 100%;
+    image-rendering: pixelated;
+}
+
+/* New Best Time pulse */
+@keyframes bestPulse {
+    0%, 100% { opacity: 1; text-shadow: 2px 2px 0px #000, 0 0 8px var(--neon-yellow); }
+    50% { opacity: 0.55; text-shadow: 2px 2px 0px #000, 0 0 20px #ffffff; }
+}
+
+.best-flash {
+    color: var(--neon-yellow);
+    animation: bestPulse 0.8s infinite;
 }
 
 /* Screen Shake Effect */
@@ -238,4 +256,140 @@ body {
 .btn:active {
     border-bottom: 0px solid transparent;
     transform: translateY(4px);
+}
+
+/* Ghost buttons (secondary actions) */
+.btn-ghost {
+    background: transparent;
+    color: var(--neon-blue);
+    border: 2px solid var(--neon-blue);
+    box-shadow: none;
+    margin-top: 12px;
+}
+
+.btn-ghost:hover {
+    background: rgba(6, 182, 212, 0.15);
+    color: #ffffff;
+    border-color: #ffffff;
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.5);
+}
+
+.btn-danger {
+    background: var(--neon-pink);
+    border-bottom-color: #be123c;
+    color: #090d16;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+}
+
+/* Level Select Grid */
+#level-select-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    max-width: 90%;
+}
+
+.level-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 92px;
+    height: 92px;
+    font-family: 'Press Start 2P', monospace;
+    background: var(--neon-blue);
+    color: #090d16;
+    border: none;
+    border-bottom: 4px solid #0891b2;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+}
+
+.level-btn:hover:not(:disabled) {
+    background-color: #ffffff;
+    transform: translateY(-3px);
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
+}
+
+.level-btn.locked {
+    background: #334155;
+    color: #64748b;
+    border-bottom-color: #1e293b;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.level-num {
+    font-size: 20px;
+}
+
+.level-best {
+    font-size: 9px;
+    color: #090d16;
+}
+
+.level-btn.locked .level-best {
+    color: #64748b;
+}
+
+.stats-line {
+    font-size: 11px;
+    color: var(--neon-yellow);
+}
+
+/* Settings Menu */
+.settings-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    width: 100%;
+    max-width: 420px;
+    justify-content: center;
+}
+
+.settings-label {
+    font-size: 12px;
+    color: var(--neon-blue);
+    min-width: 110px;
+    text-align: right;
+}
+
+.settings-value {
+    font-size: 12px;
+    color: var(--neon-yellow);
+    min-width: 44px;
+    text-align: left;
+}
+
+.settings-hint {
+    font-size: 9px;
+    color: #64748b;
+}
+
+input[type="range"] {
+    width: 180px;
+    accent-color: var(--neon-blue);
+    cursor: pointer;
+}
+
+input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--neon-blue);
+    cursor: pointer;
+}
+
+/* Small-screen polish */
+@media (max-width: 700px) {
+    .title { font-size: 20px; }
+    .title-sub { font-size: 13px; }
+    .controls-card { font-size: 9px; padding: 12px 14px; }
+    .btn { font-size: 12px; padding: 12px 20px; }
 }

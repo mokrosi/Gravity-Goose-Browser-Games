@@ -1,7 +1,9 @@
 class SoundManager {
     constructor() {
         this.ctx = null;
+        this.masterGain = null;
         this.enabled = true;
+        this.volume = 0.8; // 0..1 master volume
     }
 
     init() {
@@ -10,6 +12,11 @@ class SoundManager {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
                     this.ctx = new AudioCtx();
+                    // All SFX route through one master gain so the player can
+                    // turn the volume down/off from the Settings menu.
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.connect(this.ctx.destination);
+                    this.masterGain.gain.value = this.volume;
                 }
             }
             if (this.ctx && this.ctx.state === 'suspended') {
@@ -19,6 +26,14 @@ class SoundManager {
             console.warn("AudioContext init failed:", e);
             this.enabled = false;
         }
+    }
+
+    setVolume(volume) {
+        this.volume = Math.max(0, Math.min(1, volume));
+        if (this.ctx && this.masterGain) {
+            this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        }
+        this.enabled = this.volume > 0;
     }
 
     playStart() {
@@ -40,7 +55,7 @@ class SoundManager {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
 
             osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain || this.ctx.destination);
 
             osc.start();
             osc.stop(now + 0.4);
@@ -66,7 +81,7 @@ class SoundManager {
             gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
 
             osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain || this.ctx.destination);
 
             osc.start();
             osc.stop(this.ctx.currentTime + 0.15);
@@ -94,7 +109,7 @@ class SoundManager {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
             osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain || this.ctx.destination);
 
             osc.start();
             osc.stop(now + 0.25);
@@ -121,10 +136,68 @@ class SoundManager {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
 
             osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain || this.ctx.destination);
 
             osc.start(now);
             osc.stop(now + 0.11);
+        } catch (e) {
+            console.warn("Sound error:", e);
+        }
+    }
+
+    playBest() {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            if (!this.ctx) return;
+
+            const now = this.ctx.currentTime;
+            const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+            notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+                gain.gain.setValueAtTime(0.15, now + idx * 0.09);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.09 + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain || this.ctx.destination);
+
+                osc.start(now + idx * 0.09);
+                osc.stop(now + idx * 0.09 + 0.15);
+            });
+        } catch (e) {
+            console.warn("Sound error:", e);
+        }
+    }
+
+    playCrumb() {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            if (!this.ctx) return;
+
+            const now = this.ctx.currentTime;
+            const notes = [880, 1174.66, 1567.98]; // A5, D6, G6
+            notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+                gain.gain.setValueAtTime(0.15, now + idx * 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.05 + 0.09);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain || this.ctx.destination);
+
+                osc.start(now + idx * 0.05);
+                osc.stop(now + idx * 0.05 + 0.09);
+            });
         } catch (e) {
             console.warn("Sound error:", e);
         }
@@ -148,7 +221,7 @@ class SoundManager {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
 
             osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain || this.ctx.destination);
 
             osc.start();
             osc.stop(now + 0.2);
@@ -175,7 +248,7 @@ class SoundManager {
                 gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.1 + 0.12);
 
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.masterGain || this.ctx.destination);
 
                 osc.start(this.ctx.currentTime + idx * 0.1);
                 osc.stop(this.ctx.currentTime + idx * 0.1 + 0.12);

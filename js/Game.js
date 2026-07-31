@@ -12,12 +12,31 @@ class Game {
 
         this.player = null;
         
-        this.state = 'START'; // START, PLAYING, PAUSED, LEVEL_COMPLETE, GAME_OVER, VICTORY
+        this.state = 'START'; // START, LEVEL_SELECT, PLAYING, PAUSED, SETTINGS, LEVEL_COMPLETE, GAME_OVER, VICTORY
         this.lastTime = 0;
         
         this.score = 0;
         this.lives = 3;
         this.currentLevel = 0;
+
+        // Speedrun timer (seconds, frozen when not PLAYING)
+        this.levelTimer = 0;
+        this.totalTimer = 0;
+
+        // Persistent progress & settings (localStorage via SaveManager)
+        this.save = new SaveManager();
+
+        // Screen to return to when the settings menu is closed
+        this.settingsReturn = 'start-screen';
+
+        // Golden Breadcrumbs (optional 100% completion collectibles)
+        this.crumbCollected = 0;
+        this.crumbTotal = 0;
+        this.totalCrumbCollected = 0;
+        this.totalCrumbs = 0;
+
+        // Cached HUD element updated every frame
+        this.hudTimeEl = document.getElementById('hud-time');
 
         // Parallax stars
         this.stars = [];
@@ -36,10 +55,28 @@ class Game {
 
     bindEvents() {
         document.getElementById('btn-start').addEventListener('click', () => this.startGame());
+        document.getElementById('btn-level-select').addEventListener('click', () => this.goToLevelSelect());
+        document.getElementById('btn-level-select-back').addEventListener('click', () => this.goToStart());
+        document.getElementById('btn-start-settings').addEventListener('click', () => this.openSettings('start-screen'));
+        document.getElementById('btn-open-settings').addEventListener('click', () => this.openSettings('pause-screen'));
+        document.getElementById('btn-settings-back').addEventListener('click', () => this.settingsBack());
+        document.getElementById('btn-quit').addEventListener('click', () => this.quitToMenu());
         document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
         document.getElementById('btn-next-level').addEventListener('click', () => this.nextLevel());
-        document.getElementById('btn-restart').addEventListener('click', () => this.resetGame());
-        document.getElementById('btn-play-again').addEventListener('click', () => this.resetGame());
+        document.getElementById('btn-restart').addEventListener('click', () => this.retryLevel());
+        document.getElementById('btn-play-again').addEventListener('click', () => this.startGame());
+        document.getElementById('btn-reset-records').addEventListener('click', () => this.resetRecords());
+
+        const volumeSlider = document.getElementById('sfx-volume');
+        volumeSlider.addEventListener('input', () => {
+            const vol = parseInt(volumeSlider.value, 10) / 100;
+            document.getElementById('sfx-volume-value').innerText = Math.round(vol * 100) + '%';
+            this.save.setSfxVolume(vol);
+            this.soundManager.setVolume(vol);
+        });
+        document.getElementById('screen-shake-toggle').addEventListener('change', (e) => {
+            this.save.setScreenShake(e.target.checked);
+        });
 
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Escape' && this.state === 'PLAYING') {
@@ -62,25 +99,104 @@ class Game {
     }
 
     startGame() {
+        this.goToLevelSelect();
+    }
+
+    goToStart() {
+        this.state = 'START';
+        this.showScreen('start-screen');
+        document.getElementById('hud').classList.add('hidden');
+    }
+
+    goToLevelSelect() {
+        this.soundManager.init();
+        this.renderLevelSelect();
+        this.state = 'LEVEL_SELECT';
+        this.showScreen('level-select-screen');
+        document.getElementById('hud').classList.add('hidden');
+    }
+
+    renderLevelSelect() {
+        const grid = document.getElementById('level-select-grid');
+        grid.innerHTML = '';
+        const count = this.levelManager.levels.length;
+        for (let i = 0; i < count; i++) {
+            const unlocked = this.save.isLevelUnlocked(i);
+            const best = this.save.getBestTime(i);
+            const btn = document.createElement('button');
+            btn.className = 'level-btn' + (unlocked ? '' : ' locked');
+            btn.disabled = !unlocked;
+            btn.innerHTML =
+                `<span class="level-num">${i + 1}</span>` +
+                `<span class="level-best">${unlocked ? (best !== null ? this.formatTime(best) : '—') : '🔒'}</span>`;
+            if (unlocked) {
+                btn.addEventListener('click', () => this.startLevel(i));
+            }
+            grid.appendChild(btn);
+        }
+        const bestTotal = this.save.getBestTotal();
+        document.getElementById('level-select-stats').innerText =
+            `Best Total: ${bestTotal !== null ? this.formatTime(bestTotal) : '—'}  ·  Golden Breadcrumbs: ${this.save.getTotalCrumbs()}`;
+    }
+
+    // Begin gameplay on a specific (unlocked) level. Resets the run's totals,
+    // so a full speedrun always starts from Level 1.
+    startLevel(index) {
+        if (!this.save.isLevelUnlocked(index)) return;
         this.soundManager.init();
         this.soundManager.playStart();
         this.score = 0;
         this.lives = 3;
-        this.currentLevel = 0;
+        this.currentLevel = index;
+        this.totalTimer = 0;
+        this.totalCrumbCollected = 0;
+        this.totalCrumbs = 0;
         this.loadLevel();
+    }
+
+    retryLevel() {
+        this.startLevel(this.currentLevel);
     }
 
     loadLevel() {
         if (this.levelManager.loadLevel(this.currentLevel)) {
             this.player = new Player(this.levelManager.playerStart.x, this.levelManager.playerStart.y);
+            this.camera.snap(
+                this.player,
+                this.levelManager.width * this.levelManager.tileSize,
+                this.levelManager.height * this.levelManager.tileSize
+            );
             this.state = 'PLAYING';
             this.hideAllScreens();
             document.getElementById('hud').classList.remove('hidden');
+            this.levelTimer = 0;
+            this.crumbCollected = 0;
+            this.crumbTotal = this.levelManager.crumbs.length;
+            this.totalCrumbs += this.crumbTotal;
             this.updateHUD();
         } else {
             // Victory
             this.state = 'VICTORY';
             this.soundManager.playWin();
+
+            const percent = this.totalCrumbs > 0
+                ? Math.round((this.totalCrumbCollected / this.totalCrumbs) * 100)
+                : 100;
+
+            document.getElementById('final-time').innerText = this.formatTime(this.totalTimer);
+            document.getElementById('final-crumbs').innerText = `${this.totalCrumbCollected}/${this.totalCrumbs}`;
+            document.getElementById('final-percent').innerText = `${percent}%`;
+
+            const bestEl = document.getElementById('final-best');
+            const newBest = this.save.setBestTotal(this.totalTimer);
+            if (newBest) {
+                bestEl.innerText = 'NEW BEST TOTAL TIME!';
+                bestEl.classList.add('best-flash');
+            } else {
+                bestEl.innerText = `Best Total: ${this.formatTime(this.save.getBestTotal())}`;
+                bestEl.classList.remove('best-flash');
+            }
+
             this.showScreen('victory-screen');
             document.getElementById('hud').classList.add('hidden');
         }
@@ -96,16 +212,52 @@ class Game {
         this.hideAllScreens();
     }
 
+    quitToMenu() {
+        this.state = 'START';
+        this.showScreen('start-screen');
+        document.getElementById('hud').classList.add('hidden');
+    }
+
     nextLevel() {
         this.currentLevel++;
         this.loadLevel();
     }
 
-    resetGame() {
-        this.startGame();
+    // --- Settings -----------------------------------------------------------
+
+    openSettings(returnScreen) {
+        this.settingsReturn = returnScreen || 'start-screen';
+        const vol = Math.round(this.save.getSfxVolume() * 100);
+        document.getElementById('sfx-volume').value = vol;
+        document.getElementById('sfx-volume-value').innerText = vol + '%';
+        document.getElementById('screen-shake-toggle').checked = this.save.getScreenShake();
+        this.state = 'SETTINGS';
+        this.showScreen('settings-screen');
+    }
+
+    applySettings() {
+        const vol = parseInt(document.getElementById('sfx-volume').value, 10) / 100;
+        this.save.setSfxVolume(vol);
+        this.soundManager.setVolume(vol);
+        this.save.setScreenShake(document.getElementById('screen-shake-toggle').checked);
+    }
+
+    settingsBack() {
+        this.applySettings();
+        const target = this.settingsReturn || 'start-screen';
+        this.state = target === 'pause-screen' ? 'PAUSED' : 'START';
+        this.showScreen(target);
+    }
+
+    resetRecords() {
+        if (confirm('Reset all best times, level unlocks and breadcrumbs?')) {
+            this.save.resetRunRecords();
+            this.renderLevelSelect();
+        }
     }
 
     screenShake() {
+        if (!this.save.getScreenShake()) return;
         const container = document.getElementById('game-container');
         container.classList.remove('shake');
         void container.offsetWidth; // trigger reflow
@@ -115,7 +267,15 @@ class Game {
     updateHUD() {
         document.getElementById('hud-level').innerText = this.currentLevel + 1;
         document.getElementById('hud-score').innerText = this.score;
+        document.getElementById('hud-crumbs').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
         document.getElementById('hud-lives').innerText = '❤️'.repeat(this.lives);
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 1000);
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}:${String(ms).padStart(3, '0')}`;
     }
 
     start() {
@@ -128,8 +288,23 @@ class Game {
     update(dt) {
         if (this.state !== 'PLAYING') return;
 
+        // Speedrun timer (keeps running through deaths, freezes on pause/level end)
+        this.levelTimer += dt;
+        this.totalTimer += dt;
+        if (this.hudTimeEl) {
+            this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
+        }
+
         this.player.update(dt, this.input, this.levelManager, this.soundManager, this.particleSystem);
         this.particleSystem.update(dt);
+
+        // Sprint dust particles while the goose is running at top speed
+        if (this.player.isRunningFast && Math.random() < 0.15) {
+            const footY = this.player.gravitySign > 0
+                ? this.player.y + this.player.height + 2
+                : this.player.y - 2;
+            this.particleSystem.emitFootstep(this.player.x + this.player.width / 2, footY);
+        }
 
         // Check Spike Hazard collisions
         for (let hazard of this.levelManager.hazards) {
@@ -153,6 +328,11 @@ class Game {
             } else {
                 // Respawn
                 this.player = new Player(this.levelManager.playerStart.x, this.levelManager.playerStart.y);
+                this.camera.snap(
+                    this.player,
+                    this.levelManager.width * this.levelManager.tileSize,
+                    this.levelManager.height * this.levelManager.tileSize
+                );
             }
             return;
         }
@@ -184,11 +364,41 @@ class Game {
             }
         }
 
+        // Update Golden Breadcrumbs (optional 100% collectibles)
+        for (let crumb of this.levelManager.crumbs) {
+            crumb.update(dt);
+            if (!crumb.collected && Physics.checkCollision(this.player, crumb)) {
+                crumb.collected = true;
+                this.crumbCollected++;
+                this.totalCrumbCollected++;
+                this.save.addCrumb();
+                this.soundManager.playCrumb();
+                this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
+                this.updateHUD();
+            }
+        }
+
         // Win condition for level
         if (allItemsCollected && this.levelManager.items.length > 0) {
             this.state = 'LEVEL_COMPLETE';
             this.soundManager.playWin();
-            document.getElementById('level-bread-score').innerText = this.score;
+            document.getElementById('level-bread-score').innerText = this.levelManager.items.length;
+            document.getElementById('level-crumb-score').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
+            document.getElementById('level-time').innerText = this.formatTime(this.levelTimer);
+
+            const bestEl = document.getElementById('level-best');
+            const newBest = this.save.setBestTime(this.currentLevel, this.levelTimer);
+            if (newBest) {
+                bestEl.innerText = 'NEW BEST TIME!';
+                bestEl.classList.add('best-flash');
+                this.soundManager.playBest();
+            } else {
+                bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
+                bestEl.classList.remove('best-flash');
+            }
+            // Completing a level unlocks the next one in the level select.
+            this.save.unlockLevel(this.currentLevel + 1);
+
             this.showScreen('level-complete-screen');
         }
 
@@ -237,11 +447,21 @@ class Game {
     draw() {
         this.drawParallaxBackground();
 
-        if (this.state === 'PLAYING' || this.state === 'PAUSED' || this.state === 'LEVEL_COMPLETE') {
+        const showWorld =
+            this.state === 'PLAYING' ||
+            this.state === 'PAUSED' ||
+            this.state === 'LEVEL_COMPLETE' ||
+            (this.state === 'SETTINGS' && this.settingsReturn === 'pause-screen');
+
+        if (showWorld) {
             this.levelManager.draw(this.ctx, this.camera, this.assetManager);
             
             for (let item of this.levelManager.items) {
                 item.draw(this.ctx, this.camera, this.assetManager);
+            }
+
+            for (let crumb of this.levelManager.crumbs) {
+                crumb.draw(this.ctx, this.camera, this.assetManager);
             }
 
             for (let enemy of this.levelManager.entities) {
