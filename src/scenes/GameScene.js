@@ -47,6 +47,8 @@ class GameScene extends Phaser.Scene {
         this.exits = this.physics.add.staticGroup();
         this.fans = this.physics.add.staticGroup();
         this.bouncePads = this.physics.add.staticGroup();
+        this.chests = this.physics.add.staticGroup();
+        this.signs = this.physics.add.staticGroup();
         this.enemies = this.add.group({ runChildUpdate: true });
 
         this.generateLevel(levelData.map, tileSize);
@@ -79,6 +81,8 @@ class GameScene extends Phaser.Scene {
 
         // Destructibles collision
         this.physics.add.collider(this.player, this.destructibles, this.hitDestructible, null, this);
+        this.physics.add.collider(this.player, this.chests, this.hitChest, null, this);
+        this.physics.add.overlap(this.player, this.signs, this.readSign, null, this);
         
         // Pause Menu Toggle
         this.isPaused = false;
@@ -105,6 +109,8 @@ class GameScene extends Phaser.Scene {
             g.clear().fillStyle(0xff00ff, 1).fillRect(0,0,tileSize,tileSize*2).generateTexture('tile_exit', tileSize, tileSize*2);
             g.clear().fillStyle(0x88ccff, 0.5).fillRect(0,0,tileSize,tileSize).generateTexture('tile_fan', tileSize, tileSize);
             g.clear().fillStyle(0xffaa00, 1).fillRect(0,tileSize/2,tileSize,tileSize/2).generateTexture('tile_bounce', tileSize, tileSize);
+            g.clear().fillStyle(0xffdd00, 1).fillRect(0,tileSize/2,tileSize,tileSize/2).generateTexture('tile_chest', tileSize, tileSize);
+            g.clear().fillStyle(0xeeeeee, 1).fillRect(tileSize/4,tileSize/4,tileSize/2,tileSize/2).generateTexture('tile_sign', tileSize, tileSize);
             g.destroy();
         }
 
@@ -136,7 +142,41 @@ class GameScene extends Phaser.Scene {
                 else if (type === 12) this.fans.create(px, py, 'tile_fan');
                 else if (type === 13) this.bouncePads.create(px, py, 'tile_bounce');
                 else if (type === 14) this.enemies.add(new Enemy(this, px, py, 'manager'));
+                else if (type === 15) this.chests.create(px, py, 'tile_chest');
+                else if (type === 16) this.signs.create(px, py, 'tile_sign');
             }
+        }
+    }
+
+    hitChest(player, chest) {
+        if (player.isDashing || player.isGroundPounding || player.body.velocity.y < 0) {
+            chest.destroy();
+            sfx.hit();
+            sfx.collect();
+            this.cameras.main.shake(100, 0.02);
+            for(let i=0; i<5; i++) {
+                const shard = this.collectibles.create(chest.x, chest.y - 10, 'tile_shard');
+                this.physics.add.collider(shard, this.platforms);
+                shard.body.setVelocity(Math.random()*400-200, Math.random()*-300 - 100);
+            }
+        }
+    }
+
+    readSign(player, sign) {
+        if (!sign.hasRead) {
+            sign.hasRead = true;
+            sfx.jump();
+            
+            const jokes = [
+                "Management requests you stop\nleaving slime on the walls.",
+                "Mandatory fun hour is\ncurrently suspended.",
+                "Warning: Floor is exceptionally\nclean and slippery.",
+                "To whoever keeps eating the\nhardware: Please stop."
+            ];
+            const joke = jokes[Math.floor(Math.random() * jokes.length)];
+            
+            const text = this.add.text(sign.x, sign.y - 40, joke, { font: 'bold 12px Arial', fill: '#ffffff', backgroundColor: '#000000', padding: 4 }).setOrigin(0.5);
+            this.tweens.add({ targets: text, y: text.y - 50, alpha: 0, duration: 3000, onComplete: () => text.destroy() });
         }
     }
 
