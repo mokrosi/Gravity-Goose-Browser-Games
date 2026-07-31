@@ -44,25 +44,25 @@ const TOUCH_ICONS = {
         rows: [
             '...XX...',
             '..XXXX..',
-            '..XXXX..',
-            '..XXXX..',
+            '.XX..XX.',
+            'XX....XX',
             '...XX...',
             '...XX...',
             '........',
-            '........'
+            'XXXXXXXX'
         ],
         color: '#fde047'
     },
     'btn-touch-blink': {
         rows: [
-            '....XX...XX',
-            '...XXX..XXX',
-            '..XXXX.XXXX',
-            '..XXXXXXXXX',
-            '..XXXXXXXXX',
-            '..XXXX.XXXX',
-            '...XXX..XXX',
-            '....XX...XX'
+            '..X...X.',
+            '...X...X',
+            'XXXXXXXX',
+            'XXXXXXXX',
+            '...X...X',
+            '..X...X.',
+            '........',
+            '........'
         ],
         color: '#22d3ee'
     },
@@ -70,40 +70,14 @@ const TOUCH_ICONS = {
         rows: [
             '...XX...',
             '..XXXX..',
+            '.XX..XX.',
             '...XX...',
             '...XX...',
-            '...XX...',
-            '...XX...',
+            '.XX..XX.',
             '..XXXX..',
             '...XX...'
         ],
         color: '#f472b6'
-    },
-    'btn-touch-up': {
-        rows: [
-            '...XX...',
-            '..XXXX..',
-            '.XXXXXX.',
-            'XX.XX.XX',
-            '...XX...',
-            '...XX...',
-            '...XX...',
-            '...XX...'
-        ],
-        color: '#ffffff'
-    },
-    'btn-touch-down': {
-        rows: [
-            '...XX...',
-            '...XX...',
-            '...XX...',
-            '...XX...',
-            'XX.XX.XX',
-            '.XXXXXX.',
-            '..XXXX..',
-            '...XX...'
-        ],
-        color: '#ffffff'
     },
     'btn-touch-pause': {
         rows: [
@@ -129,8 +103,6 @@ class TouchControls {
         this.map = {
             'btn-touch-left': 'KeyA',
             'btn-touch-right': 'KeyD',
-            'btn-touch-up': 'ArrowUp',
-            'btn-touch-down': 'ArrowDown',
             'btn-touch-jump': 'KeyW',
             'btn-touch-blink': 'ShiftLeft',
             'btn-touch-flip': 'Space'
