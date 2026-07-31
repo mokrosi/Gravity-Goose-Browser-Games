@@ -11,7 +11,8 @@ A fast-paced, Vanilla JS, HTML5 Canvas platformer where you play as an angry goo
 ## How to Play
 
 ### Controls
-- **A / D** or **Left / Right Arrow**: Move left and right.
+- **A / D** or **Left / Right Arrow**: Move left and right (with acceleration & friction).
+- **W / Up Arrow**: Jump. Release early to cut the jump short; press just before landing for a buffered jump; walk off a ledge and jump within 0.1s for coyote time.
 - **SPACEBAR**: Instantly flip gravity. Use this to walk on ceilings and bypass obstacles!
 
 ### Objective
@@ -29,10 +30,10 @@ The game follows a modular Object-Oriented design using Vanilla ES6 classes:
   - `Game.js`: The core controller. Manages the game loop (`requestAnimationFrame`), state transitions (menu, playing, game over), and delegates updates/draw calls.
   - `AssetManager.js`: Handles preloading of images with a Promise-based API. Includes a graceful fallback to procedural canvas drawing if assets are missing.
   - `InputHandler.js`: Tracks key states for smooth, continuous input polling.
-  - `Physics.js`: A robust AABB collision engine that correctly handles gravity flipping and resolving collisions with tiles.
+  - `Physics.js`: A robust swept AABB collision engine. Moves entities on the X axis then the Y axis in sub-tile steps (tunneling-proof), resolves flush, and tracks grounded state relative to the gravity direction so it works inverted. All integration is `dt`-scaled.
   - `Camera.js`: A simple 2D camera that follows the player and clamps to the level bounds.
   - `LevelManager.js`: Stores the 5 levels as 2D string arrays and parses them into a grid of solid tiles and entities.
-  - `Player.js`: The protagonist. Handles specific physics interactions like the gravity flip mechanic and animation states.
+  - `Player.js`: The protagonist. Uses a modern platformer controller — acceleration/friction, coyote time (0.1s), jump buffering (0.1s), variable jump height, and a gravity-flip mechanic that adapts jump direction and grounded checks.
   - `entities/`: Base `Entity.js` class with `Enemy.js` and `Item.js` extending it for specific logic.
 
 ## QA & Testing Steps

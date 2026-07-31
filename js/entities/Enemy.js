@@ -10,18 +10,19 @@ class Enemy extends Entity {
     update(dt, level) {
         if (this.isDead) return;
 
-        // Apply gravity
+        // Apply gravity (dt-scaled)
         this.vy += this.gravity * dt;
-        
+        this.vy = Math.max(-800, Math.min(800, this.vy));
+
         let oldVx = this.vx;
 
-        Physics.resolveTileCollision(this, level);
+        Physics.resolveX(this, level, dt);
+        Physics.resolveY(this, level, dt);
+        Physics.enforceBounds(this, level);
 
-        // Turn around on hitting solid wall
-        if (this.vx === 0) {
+        // Turn around on hitting a solid wall
+        if (this.vx === 0 && oldVx !== 0) {
             this.vx = -oldVx;
-        } else {
-            this.vx = oldVx;
         }
     }
 

@@ -43,6 +43,7 @@ class Game {
 
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Escape' && this.state === 'PLAYING') {
+                e.preventDefault();
                 this.pauseGame();
             }
         });
@@ -93,8 +94,6 @@ class Game {
     resumeGame() {
         this.state = 'PLAYING';
         this.hideAllScreens();
-        this.lastTime = performance.now();
-        requestAnimationFrame((t) => this.loop(t));
     }
 
     nextLevel() {
@@ -194,7 +193,6 @@ class Game {
         }
 
         this.camera.follow(this.player, this.levelManager.width * this.levelManager.tileSize, this.levelManager.height * this.levelManager.tileSize);
-        this.input.update();
     }
 
     drawParallaxBackground() {
@@ -259,15 +257,15 @@ class Game {
     }
 
     loop(timestamp) {
-        let dt = (timestamp - this.lastTime) / 1000;
-        if (dt > 0.1) dt = 0.1; // Cap dt
+        // Delta time in seconds, capped to avoid tunneling / spiral-of-death
+        // on lag spikes (physics is fully frame-rate independent).
+        const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
         this.lastTime = timestamp;
 
         this.update(dt);
         this.draw();
+        this.input.update();
 
-        if (this.state !== 'PAUSED') {
-            requestAnimationFrame((t) => this.loop(t));
-        }
+        requestAnimationFrame((t) => this.loop(t));
     }
 }
