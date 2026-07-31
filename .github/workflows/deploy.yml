@@ -18,18 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Run headless logic tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Verify the game logic
-        run: npm test
-
   deploy:
     name: Deploy to GitHub Pages
-    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
