@@ -279,6 +279,7 @@ a {
     left: 0;
     width: 100%;
     height: 100%;
+    z-index: 50;
     pointer-events: none;
 }
 
@@ -306,7 +307,14 @@ a {
 
 .screen.hidden {
     opacity: 0;
-    pointer-events: none;
+    pointer-events: none !important;
+    display: none !important;
+}
+
+.screen.active {
+    opacity: 1;
+    z-index: 60;
+    pointer-events: auto;
 }
 
 /* Mechanic Toast Banner */
@@ -450,6 +458,8 @@ a {
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    pointer-events: auto !important;
+    z-index: 70;
 }
 
 .btn:hover {
@@ -627,8 +637,66 @@ a {
 }
 
 .settings-hint {
-    font-size: 9px;
-    color: #64748b;
+    font-size: 8px;
+    color: #94a3b8;
+}
+
+/* Achievements Screen */
+#achievements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 20px;
+    max-height: 50dvh;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.achievement-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+}
+
+.achievement-card.unlocked {
+    border-color: var(--neon-yellow);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+}
+
+.achievement-card.locked {
+    opacity: 0.6;
+}
+
+.ach-icon {
+    font-size: 24px;
+}
+
+.ach-info {
+    flex-grow: 1;
+    text-align: left;
+}
+
+.ach-title {
+    font-size: 11px;
+    color: var(--neon-yellow);
+    margin-bottom: 4px;
+}
+
+.ach-desc {
+    font-size: 8px;
+    color: var(--text-light);
+}
+
+.ach-status {
+    font-size: 8px;
+    color: var(--neon-blue);
 }
 
 input[type="range"] {
@@ -715,8 +783,10 @@ body {
     }
 }
 
-#touch-controls.hidden {
+#touch-controls.hidden,
+body.touch-device #touch-controls.hidden {
     display: none !important;
+    pointer-events: none !important;
 }
 
 /* Glassmorphism button base */
@@ -880,5 +950,23 @@ body {
 @media (orientation: portrait) {
     #orientation-warning {
         display: flex;
+    }
+}
+
+/* Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .touch-btn.haptic-pulse::after {
+        animation: none !important;
+    }
+    #mechanic-toast {
+        transition: none !important;
     }
 }

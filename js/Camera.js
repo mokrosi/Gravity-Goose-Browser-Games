@@ -30,6 +30,20 @@ class Camera {
         this._clamp(levelWidth, levelHeight);
     }
 
+    // Stable vertical framing for boss fights to prevent vertical motion sickness on mobile screens.
+    followBossArena(target, levelWidth, levelHeight) {
+        const lead = target.vx * this.lookaheadTime;
+        const leadClamped = Math.max(-this.lookaheadMax, Math.min(this.lookaheadMax, lead));
+
+        const desiredX = target.x + target.width / 2 - this.width / 2 + leadClamped;
+        const desiredY = (levelHeight / 2) - (this.height / 2);
+
+        this.x = Camera.lerp(this.x, desiredX, this.smoothness);
+        this.y = Camera.lerp(this.y, desiredY, this.smoothness);
+
+        this._clamp(levelWidth, levelHeight);
+    }
+
     // Instantly center on a target (used on level load / respawn so the
     // camera doesn't sweep across the level).
     snap(target, levelWidth, levelHeight) {

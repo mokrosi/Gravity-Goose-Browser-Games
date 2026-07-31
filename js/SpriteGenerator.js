@@ -316,6 +316,10 @@ class SpriteGenerator {
                 else p(x, y, metalLight);
             }
         }
+        // Colorblind high-contrast hazard warning line at base
+        for (let x = 0; x < 32; x++) {
+            p(x, 31, (x % 4 < 2) ? '#facc15' : '#0f172a');
+        }
 
         return canvas;
     }

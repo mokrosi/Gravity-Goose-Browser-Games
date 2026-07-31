@@ -22,9 +22,11 @@ class SaveManager {
             ghosts: {},           // { [levelIndex]: [{t,x,y}, ...] } best-run replays
             seenMechanicToasts: [],
             hintsShown: { move: false, jumpHold: false, blink: false, flip: false },
+            achievements: [],
             settings: {
                 sfxVolume: 0.8,   // 0..1 master volume
-                screenShake: true // accessibility: disable motion-heavy shake
+                screenShake: true, // accessibility: disable motion-heavy shake
+                assistMode: false  // accessibility: +2 extra lives (5 total)
             }
         };
         this.load();
@@ -154,6 +156,15 @@ class SaveManager {
         this.save();
     }
 
+    getAssistMode() {
+        return !!this.data.settings.assistMode;
+    }
+
+    setAssistMode(enabled) {
+        this.data.settings.assistMode = !!enabled;
+        this.save();
+    }
+
     // --- Mechanic Toasts ---------------------------------------------------
 
     hasSeenMechanicToast(levelIndex) {
@@ -180,6 +191,21 @@ class SaveManager {
         if (!this.data.hintsShown) this.data.hintsShown = {};
         this.data.hintsShown[key] = true;
         this.save();
+    }
+
+    // --- Achievements ------------------------------------------------------
+
+    hasAchievement(id) {
+        if (!this.data.achievements) this.data.achievements = [];
+        return this.data.achievements.indexOf(id) !== -1;
+    }
+
+    unlockAchievement(id) {
+        if (!this.data.achievements) this.data.achievements = [];
+        if (this.data.achievements.indexOf(id) === -1) {
+            this.data.achievements.push(id);
+            this.save();
+        }
     }
 
     // --- Records ------------------------------------------------------------

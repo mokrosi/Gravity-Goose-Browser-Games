@@ -19,6 +19,7 @@ class Game {
         this.particleSystem = new ParticleSystem();
         this.mechanicToasts = new MechanicToasts(this);
         this.hintSystem = new HintSystem(this);
+        this.achievements = new AchievementsManager(this);
 
         this.player = null;
         
@@ -77,34 +78,55 @@ class Game {
     }
 
     bindEvents() {
-        document.getElementById('btn-start').addEventListener('click', () => {
+        const bind = (id, event, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, fn);
+        };
+
+        bind('btn-start', 'click', () => {
             this.requestImmersiveMode();
             this.startGame();
         });
-        document.getElementById('btn-level-select').addEventListener('click', () => {
+        bind('btn-level-select', 'click', () => {
             this.requestImmersiveMode();
             this.goToLevelSelect();
         });
-        document.getElementById('btn-level-select-back').addEventListener('click', () => this.goToStart());
-        document.getElementById('btn-start-settings').addEventListener('click', () => this.openSettings('start-screen'));
-        document.getElementById('btn-open-settings').addEventListener('click', () => this.openSettings('pause-screen'));
-        document.getElementById('btn-settings-back').addEventListener('click', () => this.settingsBack());
-        document.getElementById('btn-quit').addEventListener('click', () => this.quitToMenu());
-        document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
-        document.getElementById('btn-next-level').addEventListener('click', () => this.nextLevel());
-        document.getElementById('btn-restart').addEventListener('click', () => this.retryLevel());
-        document.getElementById('btn-play-again').addEventListener('click', () => this.startGame());
-        document.getElementById('btn-reset-records').addEventListener('click', () => this.resetRecords());
-
-        const volumeSlider = document.getElementById('sfx-volume');
-        volumeSlider.addEventListener('input', () => {
-            const vol = parseInt(volumeSlider.value, 10) / 100;
-            document.getElementById('sfx-volume-value').innerText = Math.round(vol * 100) + '%';
-            this.save.setSfxVolume(vol);
-            this.soundManager.setVolume(vol);
+        bind('btn-level-select-back', 'click', () => this.goToStart());
+        bind('btn-start-settings', 'click', () => this.openSettings('start-screen'));
+        bind('btn-open-settings', 'click', () => this.openSettings('pause-screen'));
+        bind('btn-settings-back', 'click', () => this.settingsBack());
+        bind('btn-quit', 'click', () => this.quitToMenu());
+        bind('btn-resume', 'click', () => this.resumeGame());
+        bind('btn-next-level', 'click', () => this.nextLevel());
+        bind('btn-restart', 'click', () => this.retryLevel());
+        bind('btn-play-again', 'click', () => this.startGame());
+        bind('btn-achievements', 'click', () => this.openAchievements('start-screen'));
+        bind('btn-achievements-back', 'click', () => this.achievementsBack());
+        bind('btn-reset-records', 'click', () => this.resetRecords());
+        bind('btn-share-level', 'click', () => {
+            const time = this.formatTime(this.levelTimer);
+            this.shareRun(`I cleared Level ${this.currentLevel + 1} in ${time} in Gravity Goose! 🥪⚡`);
         });
-        document.getElementById('screen-shake-toggle').addEventListener('change', (e) => {
+        bind('btn-share-victory', 'click', () => {
+            const time = this.formatTime(this.totalTimer);
+            this.shareRun(`I beat Gravity Goose Level 20 & defeated the Boss in ${time}! 🏆🍞`);
+        });
+
+        bind('sfx-volume', 'input', () => {
+            const volumeSlider = document.getElementById('sfx-volume');
+            if (volumeSlider) {
+                const vol = parseInt(volumeSlider.value, 10) / 100;
+                const volVal = document.getElementById('sfx-volume-value');
+                if (volVal) volVal.innerText = Math.round(vol * 100) + '%';
+                this.save.setSfxVolume(vol);
+                this.soundManager.setVolume(vol);
+            }
+        });
+        bind('screen-shake-toggle', 'change', (e) => {
             this.save.setScreenShake(e.target.checked);
+        });
+        bind('assist-mode-toggle', 'change', (e) => {
+            this.save.setAssistMode(e.target.checked);
         });
 
         window.addEventListener('keydown', (e) => {
@@ -196,7 +218,7 @@ class Game {
         this.ghost.load(this.save.getGhost(index));
         this.ghost.startRecording();
         this.score = 0;
-        this.lives = 3;
+        this.lives = this.save.getAssistMode() ? 5 : 3;
         this.currentLevel = index;
         this.totalTimer = 0;
         this.totalCrumbCollected = 0;
@@ -315,6 +337,30 @@ class Game {
         this.updateHUD();
     }
 
+    openAchievements(fromScreen) {
+        this.achievementsReturn = fromScreen || 'start-screen';
+        this.achievements.renderModal();
+        this.showScreen('achievements-screen');
+    }
+
+    achievementsBack() {
+        this.showScreen(this.achievementsReturn || 'start-screen');
+    }
+
+    shareRun(text) {
+        const url = 'https://mokrosi.github.io/Gravity-Goose-Browser-Games/?v=1';
+        if (navigator.share) {
+            navigator.share({
+                title: 'Gravity Goose: The Bread Robbery',
+                text: text,
+                url: url
+            }).catch(() => {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(`${text} ${url}`);
+            this.spawnFloatText('COPIED LINK!', this.canvas.width / 2, 100, 'perfect');
+        }
+    }
+
     // --- Settings -----------------------------------------------------------
 
     openSettings(returnScreen) {
@@ -323,6 +369,7 @@ class Game {
         document.getElementById('sfx-volume').value = vol;
         document.getElementById('sfx-volume-value').innerText = vol + '%';
         document.getElementById('screen-shake-toggle').checked = this.save.getScreenShake();
+        document.getElementById('assist-mode-toggle').checked = this.save.getAssistMode();
         this.state = 'SETTINGS';
         this.showScreen('settings-screen');
     }
@@ -428,6 +475,20 @@ class Game {
         this.totalTimer += dt;
         if (this.hudTimeEl) {
             this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
+        }
+        const deltaEl = document.getElementById('hud-ghost-delta');
+        if (deltaEl) {
+            const best = this.save.getBestTime(this.currentLevel);
+            if (best !== null) {
+                const diff = this.levelTimer - best;
+                const sign = diff >= 0 ? '+' : '-';
+                const absSec = Math.abs(diff).toFixed(2);
+                deltaEl.innerText = `${sign}${absSec}s`;
+                deltaEl.style.color = diff <= 0 ? '#4ade80' : '#f87171';
+            } else {
+                deltaEl.innerText = '—';
+                deltaEl.style.color = 'inherit';
+            }
         }
         if (this.hudDashEl) {
             this.hudDashEl.innerText = this.player.canBlink
@@ -661,6 +722,7 @@ class Game {
             }
             // Completing a level unlocks the next one in the level select.
             this.save.unlockLevel(this.currentLevel + 1);
+            this.achievements.checkAll();
 
             const medalEl = document.getElementById('level-medal');
             if (medalEl) {
@@ -765,6 +827,13 @@ class Game {
 
             this.particleSystem.draw(this.ctx, this.camera);
         }
+    }
+    start() {
+        this.goToStart();
+        requestAnimationFrame((t) => {
+            this.lastTime = t;
+            this.loop(t);
+        });
     }
 
     loop(timestamp) {

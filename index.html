@@ -53,6 +53,7 @@
             <div id="hud" class="hidden">
                 <div class="hud-item">LEVEL <span id="hud-level">1</span></div>
                 <div class="hud-item">TIME <span id="hud-time">00:00:000</span></div>
+                <div class="hud-item" id="hud-ghost-item">DELTA <span id="hud-ghost-delta">—</span></div>
                 <div class="hud-item">BREAD 🍞 <span id="hud-score">0</span></div>
                 <div class="hud-item">CRUMBS <span id="hud-crumbs">0/0</span></div>
                 <div class="hud-item">BLINK <span id="hud-dash">READY</span></div>
@@ -98,6 +99,7 @@
                     </div>
                     <button id="btn-start" class="btn">START GAME</button>
                     <button id="btn-level-select" class="btn btn-ghost">LEVEL SELECT</button>
+                    <button id="btn-achievements" class="btn btn-ghost">ACHIEVEMENTS 🏆</button>
                     <button id="btn-start-settings" class="btn btn-ghost">SETTINGS</button>
                 </div>
 
@@ -131,8 +133,20 @@
                         <input type="checkbox" id="screen-shake-toggle" checked>
                         <span class="settings-hint">(off = motion-sickness friendly)</span>
                     </div>
+                    <div class="settings-row">
+                        <label class="settings-label" for="assist-mode-toggle">ASSIST MODE</label>
+                        <input type="checkbox" id="assist-mode-toggle">
+                        <span class="settings-hint">(+2 extra lives: 5 total)</span>
+                    </div>
                     <button id="btn-reset-records" class="btn btn-danger">RESET RECORDS</button>
                     <button id="btn-settings-back" class="btn btn-ghost">BACK</button>
+                </div>
+
+                <!-- Achievements Screen -->
+                <div id="achievements-screen" class="screen hidden">
+                    <h1 class="title">ACHIEVEMENTS</h1>
+                    <div id="achievements-list"></div>
+                    <button id="btn-achievements-back" class="btn btn-ghost">BACK</button>
                 </div>
 
                 <!-- Level Complete Screen -->
@@ -144,6 +158,7 @@
                     <p class="subtitle"><span id="level-medal" class="highlight"></span></p>
                     <p class="subtitle"><span id="level-best" class="highlight"></span></p>
                     <button id="btn-next-level" class="btn">NEXT LEVEL</button>
+                    <button id="btn-share-level" class="btn btn-ghost">SHARE RUN 🚀</button>
                 </div>
 
                 <!-- Game Over Screen -->
@@ -161,6 +176,7 @@
                     <p class="subtitle">Breadcrumbs Collected: <span id="final-crumbs" class="highlight">0/0</span> (<span id="final-percent" class="highlight">0%</span>)</p>
                     <p class="subtitle"><span id="final-best" class="highlight"></span></p>
                     <button id="btn-play-again" class="btn">PLAY AGAIN</button>
+                    <button id="btn-share-victory" class="btn btn-ghost">SHARE RUN 🚀</button>
                 </div>
 
             </div>
@@ -205,6 +221,7 @@
     <script src="js/Camera.js"></script>
     <script src="js/MechanicToasts.js"></script>
     <script src="js/HintSystem.js"></script>
+    <script src="js/Achievements.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/main.js"></script>
 </body>

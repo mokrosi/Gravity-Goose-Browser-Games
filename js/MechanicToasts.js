@@ -1,7 +1,8 @@
 const MECHANIC_INTROS = {
     5: "GRAVITY FLIP: now limited to once per jump!",
     10: "WARNING: crumbling platforms & moving lasers ahead!",
-    14: "WARNING: BOSS INCOMING!"
+    15: "VOID RIFT: intense gravity anomaly detected!",
+    19: "WARNING: FINAL BOSS INCOMING!"
 };
 
 class MechanicToasts {

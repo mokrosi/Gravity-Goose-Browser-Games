@@ -19,17 +19,15 @@ class LevelManager {
         this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10) or 'cyberpunk' (11-15)
         this.playerStart = { x: 50, y: 50 };
 
-        // Target par times in seconds for 15 levels (indices 0 to 14)
+        // Target par times in seconds for 20 levels (indices 0 to 19)
         this.parTimes = [
             12.0, 15.0, 18.0, 20.0, 22.0,
             25.0, 25.0, 28.0, 30.0, 32.0,
-            35.0, 38.0, 40.0, 42.0, 45.0
+            35.0, 38.0, 40.0, 42.0, 45.0,
+            48.0, 50.0, 52.0, 55.0, 60.0
         ];
 
-        // Moving-laser spawns per level (index -> config list). Lasers are
-        // dynamic entities, not tile characters. `axis` is the movement axis
-        // ('x' sweeps the beam sideways, 'y' sweeps it up/down); `min`/`max`
-        // bound the moving edge so the beam stays inside the play area.
+        // Moving-laser spawns per level (index -> config list).
         this.laserConfigs = {
             10: [
                 { x: 760, y: 170, width: 460, height: 10, axis: 'y', min: 150, max: 300, speed: 110 },
@@ -50,13 +48,32 @@ class LevelManager {
                 { x: 420, y: 190, width: 300, height: 10, axis: 'y', min: 170, max: 310, speed: 140 },
                 { x: 1400, y: 230, width: 12, height: 260, axis: 'x', min: 1360, max: 1600, speed: 180 },
                 { x: 2240, y: 180, width: 380, height: 10, axis: 'y', min: 160, max: 300, speed: 130 }
+            ],
+            14: [
+                { x: 600, y: 200, width: 400, height: 10, axis: 'y', min: 160, max: 320, speed: 140 },
+                { x: 1600, y: 200, width: 12, height: 280, axis: 'x', min: 1500, max: 1800, speed: 160 }
+            ],
+            15: [
+                { x: 800, y: 180, width: 12, height: 300, axis: 'x', min: 750, max: 1000, speed: 170 },
+                { x: 1800, y: 220, width: 450, height: 10, axis: 'y', min: 180, max: 320, speed: 150 }
+            ],
+            16: [
+                { x: 550, y: 200, width: 12, height: 280, axis: 'x', min: 500, max: 800, speed: 180 },
+                { x: 1450, y: 190, width: 350, height: 10, axis: 'y', min: 150, max: 300, speed: 160 }
+            ],
+            17: [
+                { x: 700, y: 210, width: 400, height: 10, axis: 'y', min: 170, max: 320, speed: 160 },
+                { x: 1900, y: 200, width: 12, height: 300, axis: 'x', min: 1850, max: 2100, speed: 190 }
+            ],
+            18: [
+                { x: 650, y: 200, width: 12, height: 260, axis: 'x', min: 600, max: 900, speed: 200 },
+                { x: 1600, y: 180, width: 400, height: 10, axis: 'y', min: 150, max: 300, speed: 170 }
             ]
         };
 
-        // Level 15 boss spawn (world px). Its beam height is derived from the
-        // arena height at load time.
+        // Level 20 boss spawn (world px).
         this.bossConfigs = {
-            14: { x: 128, y: 384 }
+            19: { x: 128, y: 384 }
         };
 
         // Levels 6-10 introduce the sunset palette, forced-gravity zones ('z')
@@ -258,7 +275,62 @@ class LevelManager {
                 "############     ###########     ###########     ###########     ###########     ###############",
                 "################################################################################################"
             ],
-            // Level 15: THE BOSS — mecha overlord guarding the stolen bread
+            // Level 15: Neon Core — crumbling spires & high-frequency lasers
+            [
+                "################################################################################################",
+                "#                                                                                              #",
+                "#             c               c               c               c               c                #",
+                "#          CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC        B    #",
+                "#                                                                                      ####### #",
+                "#                   c                   c                   c                   c      ####### #",
+                "# P ^^E     ^^^^^   E^^     ^^^^^   E       ^^^^^   E  ^^   ^^^^^   E       ^^^^^  ^^ E        #",
+                "############     ###########     ###########     ###########     ###########     ###############",
+                "################################################################################################"
+            ],
+            // Level 16: Void Rift — gravity zones & crumbling platforms
+            [
+                "################################################################################----------------",
+                "#                                                                                              #",
+                "#       c               zzzzzz                c               zzzzzz              c            #",
+                "#   #########        zzzzzzzzzz          #########         zzzzzzzzzz         #########        #",
+                "#                    zzzzzzzzzz                            zzzzzzzzzz                          #",
+                "#             c       zzzzzzzz       c              c       zzzzzzzz       c            B      #",
+                "# P  E     ^^^^^^^                 ^^^^^^^      E        ^^^^^^^                 ^^^^^^^       #",
+                "################################################################################################"
+            ],
+            // Level 17: Laser Fortress — dense laser grid & inverted platforms
+            [
+                "################################################################################################",
+                "#                                                                                              #",
+                "#         c                     c                     c                     c                  #",
+                "#     CCCCCCCCC             CCCCCCCCC             CCCCCCCCC             CCCCCCCCC         B    #",
+                "#                                                                                      ####### #",
+                "#                 c                     c                     c                 c      ####### #",
+                "# P   E     ^^^^^^^^^     E       ^^^^^^^^^     E       ^^^^^^^^^     E       ^^^^^^^^^        #",
+                "################################################################################################"
+            ],
+            // Level 18: Crumbling Void Spire — fast platforming test
+            [
+                "################################################################################################",
+                "#                                                                                              #",
+                "#             c               c               c               c               c                #",
+                "#          CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC        B    #",
+                "#                                                                                      ####### #",
+                "# P ^^E     ^^^^^   E^^     ^^^^^   E       ^^^^^   E  ^^   ^^^^^   E       ^^^^^  ^^ E        #",
+                "############     ###########     ###########     ###########     ###########     ###############",
+                "################################################################################################"
+            ],
+            // Level 19: Cyberpunk Perimeter — ultimate test before boss
+            [
+                "################################################################################################",
+                "#                                                                                              #",
+                "#       c               zzzzzz                c               zzzzzz              c            #",
+                "#   #########        zzzzzzzzzz          #########         zzzzzzzzzz         #########   B    #",
+                "#                    zzzzzzzzzz                            zzzzzzzzzz                 #######  #",
+                "# P  E     ^^^^^^^                 ^^^^^^^      E        ^^^^^^^                 ^^^^^^^       #",
+                "################################################################################################"
+            ],
+            // Level 20: THE BOSS — mecha overlord guarding the stolen bread
             // (touch all 3 switches on the right to overload it and win)
             [
                 "############################################################",
