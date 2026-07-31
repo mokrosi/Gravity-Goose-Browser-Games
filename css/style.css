@@ -1,0 +1,241 @@
+/* Gravity Goose: Visual & Audio Overhaul Styles */
+:root {
+    --bg-dark: #090d16;
+    --arcade-frame: #1e1b4b;
+    --neon-blue: #06b6d4;
+    --neon-pink: #f43f5e;
+    --neon-yellow: #facc15;
+    --text-light: #f8fafc;
+    --glass-bg: rgba(15, 23, 42, 0.85);
+    --glass-border: rgba(56, 189, 248, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    background-image: 
+        radial-gradient(circle at 50% 30%, #1e1b4b 0%, #090d16 80%);
+    color: var(--text-light);
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Arcade Cabinet Bezel Wrapper */
+#arcade-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+    padding: 16px;
+    border-radius: 16px;
+    border: 4px solid var(--neon-blue);
+    box-shadow: 
+        0 0 30px rgba(6, 182, 212, 0.4),
+        inset 0 0 20px rgba(0, 0, 0, 0.8);
+    max-width: 95vw;
+}
+
+/* Arcade Top Header & HUD */
+#arcade-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    margin-bottom: 12px;
+    background: rgba(30, 27, 75, 0.8);
+    border: 2px solid var(--glass-border);
+    border-radius: 8px;
+    box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.arcade-title {
+    font-size: 16px;
+    color: var(--neon-pink);
+    text-shadow: 2px 2px 0px #000, 0 0 8px var(--neon-pink);
+    letter-spacing: 2px;
+}
+
+#hud {
+    display: flex;
+    gap: 24px;
+    font-size: 14px;
+    color: var(--neon-yellow);
+    text-shadow: 2px 2px 0px #000;
+}
+
+#hud.hidden {
+    display: none;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Canvas Box */
+#game-container {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    background-color: #0f172a;
+    border: 4px solid #334155;
+    border-radius: 8px;
+    image-rendering: pixelated;
+    overflow: hidden;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Screen Shake Effect */
+@keyframes shake {
+    0% { transform: translate(0, 0); }
+    20% { transform: translate(-6px, 6px); }
+    40% { transform: translate(6px, -6px); }
+    60% { transform: translate(-6px, -6px); }
+    80% { transform: translate(6px, 6px); }
+    100% { transform: translate(0, 0); }
+}
+
+.shake {
+    animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* UI Glassmorphism Layer */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Glassmorphism Screens */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    border: 2px solid var(--glass-border);
+    text-align: center;
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+}
+
+.screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.screen.active {
+    opacity: 1;
+}
+
+/* Typography & Titles */
+.title {
+    font-size: 30px;
+    color: var(--neon-blue);
+    margin-bottom: 8px;
+    text-shadow: 3px 3px 0px #000, 0 0 12px var(--neon-blue);
+}
+
+.title-sub {
+    font-size: 18px;
+    color: var(--neon-yellow);
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0px #000;
+}
+
+.title.game-over { 
+    color: var(--neon-pink); 
+    text-shadow: 3px 3px 0px #000, 0 0 15px var(--neon-pink);
+}
+
+.title.win { 
+    color: var(--neon-yellow); 
+    text-shadow: 3px 3px 0px #000, 0 0 15px var(--neon-yellow);
+}
+
+.subtitle {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 28px;
+    line-height: 1.6;
+}
+
+.highlight {
+    color: var(--neon-yellow);
+}
+
+/* Controls Info Card */
+.controls-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--glass-border);
+    padding: 14px 24px;
+    border-radius: 8px;
+    margin-bottom: 28px;
+    font-size: 10px;
+    color: #cbd5e1;
+    line-height: 2;
+}
+
+.key {
+    background: #0f172a;
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Retro Arcade Buttons */
+.btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    padding: 14px 28px;
+    background: var(--neon-blue);
+    color: #090d16;
+    border: none;
+    border-bottom: 4px solid #0891b2;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+    outline: none;
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+}
+
+.btn:hover {
+    background-color: #ffffff;
+    color: #090d16;
+    border-bottom: 4px solid var(--neon-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
+}
+
+.btn:active {
+    border-bottom: 0px solid transparent;
+    transform: translateY(4px);
+}

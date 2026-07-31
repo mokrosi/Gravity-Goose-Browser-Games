@@ -3,48 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aetheria: Neon Ascend</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #050510;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        #game-container {
-            width: 100%;
-            height: 100%;
-        }
-        canvas {
-            display: block;
-            image-rendering: pixelated; /* Crucial for crisp pixel art */
-        }
-    </style>
+    <title>Gravity Goose: The Bread Robbery</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="game-container"></div>
-    
-    <!-- Phaser 3 via CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
-    
-    <!-- Game Source -->
-    <script src="src/utils/zzfx.js"></script>
-    <script src="src/config/config.js"></script>
-    <script src="src/scenes/BootScene.js"></script>
-    <script src="src/scenes/PreloadScene.js"></script>
-    <script src="src/scenes/MainMenuScene.js"></script>
-    <script src="src/utils/LevelData.js"></script>
-    <script src="src/entities/MovingPlatform.js"></script>
-    <script src="src/entities/Enemy.js"></script>
-    <script src="src/entities/Destructible.js"></script>
-    <script src="src/entities/Player.js"></script>
-    <script src="src/scenes/GameScene.js"></script>
-    <script src="src/main.js"></script>
+    <div id="arcade-wrapper">
+        <!-- Sleek Arcade Top Header HUD -->
+        <div id="arcade-header">
+            <div class="arcade-title">GRAVITY GOOSE</div>
+            <div id="hud" class="hidden">
+                <div class="hud-item">LEVEL <span id="hud-level">1</span></div>
+                <div class="hud-item">BREAD 🍞 <span id="hud-score">0</span></div>
+                <div class="hud-item"><span id="hud-lives">❤️❤️❤️</span></div>
+            </div>
+        </div>
+
+        <div id="game-container">
+            <!-- Canvas for the game -->
+            <canvas id="game-canvas" width="800" height="600"></canvas>
+            
+            <!-- Glassmorphism UI Overlay Layer -->
+            <div id="ui-layer">
+
+                <!-- Start Screen -->
+                <div id="start-screen" class="screen active">
+                    <h1 class="title">Gravity Goose</h1>
+                    <h2 class="title-sub">The Bread Robbery</h2>
+                    <p class="subtitle">Aliens stole your sandwich. Steal their gravity!</p>
+                    <div class="controls-card">
+                        <p><span class="key">SPACE</span> Flip Gravity</p>
+                        <p><span class="key">A</span> / <span class="key">D</span> or <span class="key">←</span> <span class="key">→</span> Move</p>
+                    </div>
+                    <button id="btn-start" class="btn">START GAME</button>
+                </div>
+
+                <!-- Pause Menu -->
+                <div id="pause-screen" class="screen hidden">
+                    <h1 class="title">PAUSED</h1>
+                    <button id="btn-resume" class="btn">RESUME</button>
+                </div>
+
+                <!-- Level Complete Screen -->
+                <div id="level-complete-screen" class="screen hidden">
+                    <h1 class="title win">LEVEL CLEARED!</h1>
+                    <p class="subtitle">Bread Recovered: <span id="level-bread-score" class="highlight">0</span></p>
+                    <button id="btn-next-level" class="btn">NEXT LEVEL</button>
+                </div>
+
+                <!-- Game Over Screen -->
+                <div id="game-over-screen" class="screen hidden">
+                    <h1 class="title game-over">GAME OVER</h1>
+                    <p class="subtitle">The aliens ate your bread.</p>
+                    <button id="btn-restart" class="btn">TRY AGAIN</button>
+                </div>
+
+                <!-- Victory Screen -->
+                <div id="victory-screen" class="screen hidden">
+                    <h1 class="title win">VICTORY!</h1>
+                    <p class="subtitle">You recovered all the bread & defeated the frog armada!</p>
+                    <button id="btn-play-again" class="btn">PLAY AGAIN</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/SpriteGenerator.js"></script>
+    <script src="js/SoundManager.js"></script>
+    <script src="js/ParticleSystem.js"></script>
+    <script src="js/entities/Entity.js"></script>
+    <script src="js/entities/Item.js"></script>
+    <script src="js/entities/Enemy.js"></script>
+    <script src="js/Player.js"></script>
+    <script src="js/Physics.js"></script>
+    <script src="js/AssetManager.js"></script>
+    <script src="js/InputHandler.js"></script>
+    <script src="js/LevelManager.js"></script>
+    <script src="js/Camera.js"></script>
+    <script src="js/Game.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
