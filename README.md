@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/images/banner.svg" alt="Gravity Goose Banner" />
+  <img src="assets/images/banner.png" alt="Gravity Goose Banner" />
 
   <h1>Gravity Goose: The Bread Robbery</h1>
 
