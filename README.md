@@ -1,40 +1,18 @@
-# Aetheria: Neon Ascend
+# Slime Time: Office Escape
 
-A production-quality browser game built with Phaser 3.
+An original, fast-paced, comedy-driven platformer where you play as Bloop, a sentient slime trying to escape a rigid corporate office.
 
-## Overview
-
-Aetheria is an atmospheric 2D pixel-art platformer focusing on tight "Game Feel", responsiveness, and momentum. You play as Lumi, an energy-being ascending through 5 levels of a derelict cybernetic facility.
-
-## Features
-
-- **Phaser 3 Engine**: Built utilizing Phaser 3 for robust Arcade physics, tilemap rendering, and particle systems.
-- **Game Feel Mechanics**: Implements Celeste/Hollow Knight-inspired movement (coyote time, jump buffering, wall jumping, directional dashing, squash and stretch, hit-stop).
-- **Enemies & Hazards**: Dynamic AI including Crawlers and Flyers.
-- **Procedural Audio**: Utilizes `zzfx.js` for zero-asset, procedural 8-bit sound effects.
-- **Levels**: 5 distinct, hand-crafted levels stored efficiently in `LevelData.js`.
-
-## Tech Stack
-
-- HTML5 Canvas
-- Phaser 3 (via CDN, no build tool required)
-- Vanilla JavaScript (ES6 classes)
+## Core Features
+- **Unmatched Game Feel**: Jump buffering, coyote time, sticky walls, splat dashes, and ground pounds.
+- **Juicy Physics**: Hit-stop, camera shake, and procedural particle slime splatters.
+- **Comedic AI**: Enemies that panic, slip, and react humorously to your slime trail.
+- **No Assets Required**: Graphics are generated at runtime via Canvas geometry, and sound effects are procedurally synthesized using `zzfx.js`.
 
 ## How to Play
+Open `index.html` in your browser.
+- **Move**: A/D or Left/Right
+- **Jump**: W / Space (Hold to jump higher)
+- **Ground Pound**: S / Down (While in air)
+- **Splat Dash**: Shift (While in air)
 
-Simply open `index.html` in any modern web browser or serve it via a local HTTP server.
-
-- **Move**: A/D or Left/Right Arrows
-- **Jump**: W, Space, or Up Arrow
-- **Dash**: Shift
-- **Pause**: ESC
-
-## File Structure
-
-- `index.html`: Main entry point.
-- `src/`: Core game logic.
-  - `config/`: Phaser game configuration.
-  - `scenes/`: Game states (Boot, Preload, MainMenu, Game).
-  - `entities/`: Game objects (Player, Enemy, MovingPlatform).
-  - `utils/`: Data and utilities (LevelData, zzfx).
-- `assets/`: Directory for external assets (images, audio, tilemaps) if expanded.
+Enjoy making a mess!

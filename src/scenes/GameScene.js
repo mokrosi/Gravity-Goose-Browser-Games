@@ -41,9 +41,12 @@ class GameScene extends Phaser.Scene {
         this.platforms = this.physics.add.staticGroup();
         this.oneWayPlatforms = this.physics.add.staticGroup();
         this.movingPlatforms = this.add.group();
+        this.destructibles = this.physics.add.staticGroup();
         this.spikes = this.physics.add.staticGroup();
         this.collectibles = this.physics.add.staticGroup();
         this.exits = this.physics.add.staticGroup();
+        this.fans = this.physics.add.staticGroup();
+        this.bouncePads = this.physics.add.staticGroup();
         this.enemies = this.add.group({ runChildUpdate: true });
 
         this.generateLevel(levelData.map, tileSize);
@@ -73,6 +76,9 @@ class GameScene extends Phaser.Scene {
         
         // Enemy collision
         this.physics.add.collider(this.player, this.enemies, this.hitEnemy, null, this);
+
+        // Destructibles collision
+        this.physics.add.collider(this.player, this.destructibles, this.hitDestructible, null, this);
         
         // Pause Menu Toggle
         this.isPaused = false;
@@ -97,6 +103,8 @@ class GameScene extends Phaser.Scene {
             g.clear().fillStyle(0xff0044, 1).fillTriangle(tileSize/2, 0, tileSize, tileSize, 0, tileSize).generateTexture('tile_spike', tileSize, tileSize);
             g.clear().fillStyle(0x00ffff, 1).fillCircle(tileSize/2, tileSize/2, tileSize/4).generateTexture('tile_shard', tileSize, tileSize);
             g.clear().fillStyle(0xff00ff, 1).fillRect(0,0,tileSize,tileSize*2).generateTexture('tile_exit', tileSize, tileSize*2);
+            g.clear().fillStyle(0x88ccff, 0.5).fillRect(0,0,tileSize,tileSize).generateTexture('tile_fan', tileSize, tileSize);
+            g.clear().fillStyle(0xffaa00, 1).fillRect(0,tileSize/2,tileSize,tileSize/2).generateTexture('tile_bounce', tileSize, tileSize);
             g.destroy();
         }
 
@@ -121,17 +129,37 @@ class GameScene extends Phaser.Scene {
                     const spike = this.spikes.create(px, py, 'tile_spike');
                     spike.body.setSize(tileSize-4, tileSize-10).setOffset(2, 10);
                 }
-                else if (type === 8) this.enemies.add(new Enemy(this, px, py, 'crawler'));
-                else if (type === 9) this.enemies.add(new Enemy(this, px, py, 'flyer'));
+                else if (type === 8) this.enemies.add(new Enemy(this, px, py, 'intern'));
+                else if (type === 9) this.enemies.add(new Enemy(this, px, py, 'drone'));
+                else if (type === 10) this.destructibles.add(new Destructible(this, px, py - 4, 'cooler'));
+                else if (type === 11) this.destructibles.add(new Destructible(this, px, py, 'desk'));
+                else if (type === 12) this.fans.create(px, py, 'tile_fan');
+                else if (type === 13) this.bouncePads.create(px, py, 'tile_bounce');
+                else if (type === 14) this.enemies.add(new Enemy(this, px, py, 'manager'));
             }
         }
     }
 
+    hitDestructible(player, destructible) {
+        // If player is dashing or ground pounding, break it
+        if (player.isDashing || player.isGroundPounding) {
+            destructible.breakProp();
+            player.body.velocity.y *= 0.5; // slow down slightly on impact
+            // Add a little hit stop
+            this.physics.world.timeScale = 2;
+            this.time.delayedCall(30, () => {
+                this.physics.world.timeScale = 1;
+            });
+        } else {
+            // Act as a solid block (already handled by collider)
+        }
+    }
+
     hitEnemy(player, enemy) {
-        if (!enemy.body.enable) return;
-        
-        // Check if player is falling onto the enemy
-        if (player.body.velocity.y > 0 && player.y + player.height/2 < enemy.y + enemy.height/2) {
+        if (enemy.isDead) return;
+
+        // Ground pound or falling onto enemy = kill
+        if (player.isGroundPounding || (player.body.velocity.y > 0 && player.y + player.height/2 < enemy.y + enemy.height/2)) {
             player.setVelocityY(-400); // Bounce off
             player.canDoubleJump = true;
             player.canDash = true;
@@ -140,15 +168,24 @@ class GameScene extends Phaser.Scene {
             this.cameras.main.shake(100, 0.02);
             
             // Hit stop (Game Feel)
-            this.physics.world.timeScale = 5;
-            this.time.delayedCall(50, () => {
+            this.physics.world.timeScale = 3;
+            this.time.delayedCall(40, () => {
                 this.physics.world.timeScale = 1;
             });
+            
+            // Pop out a shard on kill
+            const shard = this.collectibles.create(enemy.x, enemy.y - 20, 'tile_shard');
+            this.physics.add.collider(shard, this.platforms);
+            shard.body.setVelocityY(-200);
+            
+        } else if (player.isDashing) {
+            // Dashing into manager knocks them back comedically
+            enemy.die();
+            sfx.hit();
+            this.cameras.main.shake(200, 0.04);
         } else {
             // Player takes damage
-            if (!player.isDashing) {
-                this.hitHazard();
-            }
+            this.hitHazard();
         }
     }
 
@@ -189,6 +226,26 @@ class GameScene extends Phaser.Scene {
         
         if (this.player && !this.isTransitioning) {
             this.player.update(time, delta);
+            
+            // Fan logic (Overlap check)
+            let inFan = false;
+            this.physics.overlap(this.player, this.fans, (p, f) => {
+                inFan = true;
+                p.body.velocity.y -= 40; // Upward draft
+                // Cap upward draft
+                if (p.body.velocity.y < -300) p.body.velocity.y = -300;
+            });
+            
+            // Bounce pad logic (Collider)
+            this.physics.collide(this.player, this.bouncePads, (p, b) => {
+                if (p.body.touching.down && b.body.touching.up) {
+                    p.setVelocityY(-600);
+                    sfx.jump(); // loud bounce
+                    p.canDoubleJump = true;
+                    p.canDash = true;
+                    this.cameras.main.shake(100, 0.02);
+                }
+            });
         }
         
         if (this.player && this.player.y > this.physics.world.bounds.height) {
