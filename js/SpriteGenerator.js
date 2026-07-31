@@ -228,19 +228,20 @@ class SpriteGenerator {
         return canvas;
     }
 
-    // theme: 'retro' (levels 1-5) or 'sunset' (levels 6-10, amber/orange).
+    // theme: 'retro' (levels 1-5), 'sunset' (levels 6-10) or 'cyberpunk' (11-15).
     static generateTileSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
+        const cyberpunk = theme === 'cyberpunk';
         const sunset = theme === 'sunset';
-        const base = sunset ? '#431407' : '#1E1B4B';
-        const border = sunset ? '#7C2D12' : '#312E81';
-        const neon = sunset ? '#F59E0B' : '#06B6D4';
-        const neonGlow = sunset ? '#FBBF24' : '#38BDF8';
-        const rivet = sunset ? '#FDBA74' : '#64748B';
+        const base = cyberpunk ? '#17002e' : (sunset ? '#431407' : '#1E1B4B');
+        const border = cyberpunk ? '#4a044e' : (sunset ? '#7C2D12' : '#312E81');
+        const neon = cyberpunk ? '#e11d48' : (sunset ? '#F59E0B' : '#06B6D4');
+        const neonGlow = cyberpunk ? '#f43f5e' : (sunset ? '#FBBF24' : '#38BDF8');
+        const rivet = cyberpunk ? '#a78bfa' : (sunset ? '#FDBA74' : '#64748B');
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;
@@ -278,17 +279,18 @@ class SpriteGenerator {
         return canvas;
     }
 
-    // theme: 'retro' (levels 1-5) or 'sunset' (levels 6-10, amber/orange).
+    // theme: 'retro' (levels 1-5), 'sunset' (levels 6-10) or 'cyberpunk' (11-15).
     static generateSpikeSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
+        const cyberpunk = theme === 'cyberpunk';
         const sunset = theme === 'sunset';
-        const metalDark = sunset ? '#9A3412' : '#475569';
-        const metalLight = sunset ? '#FB923C' : '#94A3B8';
-        const tipRed = sunset ? '#F97316' : '#EF4444';
+        const metalDark = cyberpunk ? '#881337' : (sunset ? '#9A3412' : '#475569');
+        const metalLight = cyberpunk ? '#fb7185' : (sunset ? '#FB923C' : '#94A3B8');
+        const tipRed = cyberpunk ? '#e11d48' : (sunset ? '#F97316' : '#EF4444');
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;

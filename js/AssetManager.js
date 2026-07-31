@@ -14,6 +14,9 @@ class AssetManager {
         // Sunset palette for Levels 6-10
         this.images['tileset_sunset'] = SpriteGenerator.generateTileSprite('sunset');
         this.images['spikes_sunset'] = SpriteGenerator.generateSpikeSprite('sunset');
+        // Cyberpunk palette for Levels 11-15
+        this.images['tileset_cyberpunk'] = SpriteGenerator.generateTileSprite('cyberpunk');
+        this.images['spikes_cyberpunk'] = SpriteGenerator.generateSpikeSprite('cyberpunk');
     }
 
     loadImage(key, src) {

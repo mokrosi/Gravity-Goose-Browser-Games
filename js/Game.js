@@ -19,6 +19,11 @@ class Game {
         this.lives = 3;
         this.currentLevel = 0;
 
+        // Level 15 boss-fight state: after all 3 switches are hit the boss
+        // plays a dying animation before the Final Victory screen appears.
+        this.bossDeathTimer = 0;
+        this.bossVictoryShown = false;
+
         // Speedrun timer (seconds, frozen when not PLAYING)
         this.levelTimer = 0;
         this.totalTimer = 0;
@@ -43,6 +48,8 @@ class Game {
         this.hudDashEl = document.getElementById('hud-dash');
         this.hudFlipItemEl = document.getElementById('hud-flip-item');
         this.hudFlipFillEl = document.getElementById('hud-flip-fill');
+        this.hudBossItemEl = document.getElementById('hud-boss-item');
+        this.hudBossEl = document.getElementById('hud-boss');
 
         // Parallax stars
         this.stars = [];
@@ -132,8 +139,8 @@ class Game {
             const unlocked = this.save.isLevelUnlocked(i);
             const best = this.save.getBestTime(i);
             const btn = document.createElement('button');
-            const sunsetClass = i >= 5 ? ' sunset' : '';
-            btn.className = 'level-btn' + sunsetClass + (unlocked ? '' : ' locked');
+            const chapterClass = i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : '');
+            btn.className = 'level-btn' + chapterClass + (unlocked ? '' : ' locked');
             btn.disabled = !unlocked;
             btn.innerHTML =
                 `<span class="level-num">${i + 1}</span>` +
@@ -180,6 +187,8 @@ class Game {
     loadLevel() {
         if (this.levelManager.loadLevel(this.currentLevel)) {
             this.player = this.createPlayer();
+            this.bossDeathTimer = 0;
+            this.bossVictoryShown = false;
             this.camera.snap(
                 this.player,
                 this.levelManager.width * this.levelManager.tileSize,
@@ -194,31 +203,37 @@ class Game {
             this.totalCrumbs += this.crumbTotal;
             this.updateHUD();
         } else {
-            // Victory
-            this.state = 'VICTORY';
-            this.soundManager.playWin();
-
-            const percent = this.totalCrumbs > 0
-                ? Math.round((this.totalCrumbCollected / this.totalCrumbs) * 100)
-                : 100;
-
-            document.getElementById('final-time').innerText = this.formatTime(this.totalTimer);
-            document.getElementById('final-crumbs').innerText = `${this.totalCrumbCollected}/${this.totalCrumbs}`;
-            document.getElementById('final-percent').innerText = `${percent}%`;
-
-            const bestEl = document.getElementById('final-best');
-            const newBest = this.save.setBestTotal(this.totalTimer);
-            if (newBest) {
-                bestEl.innerText = 'NEW BEST TOTAL TIME!';
-                bestEl.classList.add('best-flash');
-            } else {
-                bestEl.innerText = `Best Total: ${this.formatTime(this.save.getBestTotal())}`;
-                bestEl.classList.remove('best-flash');
-            }
-
-            this.showScreen('victory-screen');
-            document.getElementById('hud').classList.add('hidden');
+            // No more levels: the run is over.
+            this.showVictory();
         }
+    }
+
+    // Final Victory screen (reached after Level 15's boss, or via the old
+    // fall-through when the next level index does not exist).
+    showVictory() {
+        this.state = 'VICTORY';
+        this.soundManager.playWin();
+
+        const percent = this.totalCrumbs > 0
+            ? Math.round((this.totalCrumbCollected / this.totalCrumbs) * 100)
+            : 100;
+
+        document.getElementById('final-time').innerText = this.formatTime(this.totalTimer);
+        document.getElementById('final-crumbs').innerText = `${this.totalCrumbCollected}/${this.totalCrumbs}`;
+        document.getElementById('final-percent').innerText = `${percent}%`;
+
+        const bestEl = document.getElementById('final-best');
+        const newBest = this.save.setBestTotal(this.totalTimer);
+        if (newBest) {
+            bestEl.innerText = 'NEW BEST TOTAL TIME!';
+            bestEl.classList.add('best-flash');
+        } else {
+            bestEl.innerText = `Best Total: ${this.formatTime(this.save.getBestTotal())}`;
+            bestEl.classList.remove('best-flash');
+        }
+
+        this.showScreen('victory-screen');
+        document.getElementById('hud').classList.add('hidden');
     }
 
     pauseGame() {
@@ -244,6 +259,22 @@ class Game {
     nextLevel() {
         this.currentLevel++;
         this.loadLevel();
+    }
+
+    // All three overload switches are down: the boss dies, then the Final
+    // Victory screen rolls in after the short dying animation.
+    defeatBoss() {
+        const boss = this.levelManager.boss;
+        if (!boss) return;
+        boss.defeat();
+        this.bossDeathTimer = Boss.DEATH_TIME;
+        this.bossVictoryShown = false;
+        this.soundManager.stopMusic();
+        this.soundManager.playWin();
+        this.screenShakeBig();
+        this.flashScreen();
+        this.particleSystem.emitHurt(boss.x + boss.width / 2, boss.y + boss.height / 2);
+        this.updateHUD();
     }
 
     // --- Settings -----------------------------------------------------------
@@ -287,11 +318,31 @@ class Game {
         container.classList.add('shake');
     }
 
+    // Extra-violent shake for the boss death sequence.
+    screenShakeBig() {
+        if (!this.save.getScreenShake()) return;
+        const container = document.getElementById('game-container');
+        container.classList.remove('shake', 'shake-big');
+        void container.offsetWidth; // trigger reflow
+        container.classList.add('shake-big');
+    }
+
     updateHUD() {
         document.getElementById('hud-level').innerText = this.currentLevel + 1;
         document.getElementById('hud-score').innerText = this.score;
         document.getElementById('hud-crumbs').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
         document.getElementById('hud-lives').innerText = '❤️'.repeat(this.lives);
+
+        // Boss-fight overload tracker (only visible on the Level 15 arena).
+        const boss = this.levelManager.boss;
+        if (this.hudBossItemEl) {
+            this.hudBossItemEl.classList.toggle('hidden', !boss || boss.isDefeated);
+        }
+        if (this.hudBossEl && boss) {
+            const total = this.levelManager.switches.length;
+            const done = this.levelManager.switches.filter(s => s.activated).length;
+            this.hudBossEl.innerText = '●'.repeat(done) + '○'.repeat(total - done);
+        }
     }
 
     formatTime(seconds) {
@@ -377,12 +428,41 @@ class Game {
             this.particleSystem.emitFootstep(this.player.x + this.player.width / 2, footY);
         }
 
+        // Crumbling platforms tremble under the goose, then collapse.
+        this.levelManager.updateCrumbling(dt, this.player);
+
+        // Moving lasers (Levels 11-14) sweep along their axis.
+        for (let laser of this.levelManager.lasers) {
+            laser.update(dt);
+        }
+
         // Check Spike Hazard collisions (forgiving 15%-shrunk hitboxes; blink i-frames protect)
         if (!this.player.isInvincible) {
             for (let hazard of this.levelManager.hazards) {
                 const hb = Physics.shrink(hazard, Physics.HAZARD_INSET);
                 if (Physics.checkCollision(this.player, hb)) {
                     this.player.isDead = true;
+                }
+            }
+
+            // Moving laser beams are equally deadly.
+            for (let laser of this.levelManager.lasers) {
+                const hb = Physics.shrink(laser, Physics.HAZARD_INSET);
+                if (Physics.checkCollision(this.player, hb)) {
+                    this.player.isDead = true;
+                    break;
+                }
+            }
+
+            // Level 15 boss: full-width top/bottom half-arena beams while firing.
+            const boss = this.levelManager.boss;
+            if (boss) {
+                const beam = boss.firingBeam(this.levelManager.width * this.levelManager.tileSize);
+                if (beam) {
+                    const hb = Physics.shrink(beam, Physics.HAZARD_INSET);
+                    if (Physics.checkCollision(this.player, hb)) {
+                        this.player.isDead = true;
+                    }
                 }
             }
         }
@@ -415,6 +495,7 @@ class Game {
                     this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
                 }
                 this.levelManager.resetCrumbs();
+                this.levelManager.resetCrumbles();
                 this.totalCrumbCollected -= this.crumbCollected;
                 this.crumbCollected = 0;
                 this.ghost.startRecording(); // keep the replay in sync with the reset timer
@@ -432,6 +513,48 @@ class Game {
                 if (Physics.checkCollision(this.player, hb)) {
                     this.player.isDead = true;
                 }
+            }
+        }
+
+        // Level 15 boss: attack cycle, overload switches, death sequence.
+        const boss = this.levelManager.boss;
+        if (boss && boss.isDefeated) {
+            this.bossDeathTimer -= dt;
+            // Fiery dying animation before the Final Victory screen.
+            if (Math.random() < 0.35) {
+                this.particleSystem.emitHurt(
+                    boss.x + Math.random() * boss.width,
+                    boss.y + Math.random() * boss.height
+                );
+            }
+            if (this.bossDeathTimer <= 0 && !this.bossVictoryShown) {
+                this.bossVictoryShown = true;
+                this.save.setBestTime(this.currentLevel, this.levelTimer);
+                this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                this.showVictory();
+                return;
+            }
+        } else if (boss) {
+            boss.update(dt, this.levelManager);
+
+            // Overload switches: touching one staggers the boss; all 3 kill it.
+            let allActivated = true;
+            for (let sw of this.levelManager.switches) {
+                if (sw.activated) continue;
+                if (Physics.checkCollision(this.player, sw)) {
+                    sw.activated = true;
+                    this.soundManager.playSwitch();
+                    this.particleSystem.emitBreadCollect(sw.x + sw.width / 2, sw.y + sw.height / 2);
+                    this.spawnFloatText('OVERLOAD!', sw.x + sw.width / 2, sw.y, 'perfect');
+                    boss.hit();
+                    this.screenShake();
+                    this.updateHUD();
+                } else {
+                    allActivated = false;
+                }
+            }
+            if (allActivated && this.levelManager.switches.length > 0) {
+                this.defeatBoss();
             }
         }
 
@@ -474,8 +597,9 @@ class Game {
             }
         }
 
-        // Win condition for level
-        if (allItemsCollected && this.levelManager.items.length > 0) {
+        // Win condition for level (the boss arena is cleared via its switches
+        // instead — collecting the bread there doesn't end the fight).
+        if (allItemsCollected && this.levelManager.items.length > 0 && !this.levelManager.isBossLevel) {
             this.state = 'LEVEL_COMPLETE';
             this.soundManager.playWin();
             document.getElementById('level-bread-score').innerText = this.levelManager.items.length;
@@ -507,11 +631,12 @@ class Game {
 
     drawParallaxBackground() {
         // Deep Space Background with Parallax Starfield & Synth Grid.
-        // Levels 6-10 shift the whole backdrop to a sunset/amber palette.
+        // 6-10 shift to sunset/amber; 11-15 to neon cyberpunk magenta.
+        const cyberpunk = this.levelManager.theme === 'cyberpunk';
         const sunset = this.levelManager.theme === 'sunset';
-        const bg = sunset ? '#2b1004' : '#0f172a';
-        const starColor = sunset ? '#fed7aa' : '#ffffff';
-        const gridColor = sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)';
+        const bg = cyberpunk ? '#0b0118' : (sunset ? '#2b1004' : '#0f172a');
+        const starColor = cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff');
+        const gridColor = cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)');
 
         this.ctx.fillStyle = bg;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -572,6 +697,14 @@ class Game {
 
             for (let enemy of this.levelManager.entities) {
                 enemy.draw(this.ctx, this.camera, this.assetManager);
+            }
+
+            for (let laser of this.levelManager.lasers) {
+                laser.draw(this.ctx, this.camera, this.assetManager);
+            }
+
+            if (this.levelManager.boss) {
+                this.levelManager.boss.draw(this.ctx, this.camera, this.assetManager, this.levelManager);
             }
 
             if (this.player) {

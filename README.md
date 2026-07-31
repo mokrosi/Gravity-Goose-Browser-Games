@@ -23,8 +23,10 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 
 ## ✨ Features
 
-- 🧲 **Anti-gravity mechanic** — press `SPACE` (or left-click) to instantly flip gravity and walk on the ceiling. Jumps, landings and coyote time all adapt to the gravity direction. On **Levels 6–10** the flip is a limited resource: one flip per airtime, recharged by landing or grabbing a golden breadcrumb, with a **stamina bar** in the HUD.
+- 🧲 **Anti-gravity mechanic** — press `SPACE` (or left-click) to instantly flip gravity and walk on the ceiling. Jumps, landings and coyote time all adapt to the gravity direction. On **Levels 6–15** the flip is a limited resource: one flip per airtime, recharged by landing or grabbing a golden breadcrumb, with a **stamina bar** in the HUD.
 - 🌇 **Sunset chapter** — levels 6–10 swap the neon-retro palette for a dusk look: amber bricks, glowing orange spikes and a star-scattered sunset backdrop.
+- 🏭 **Cyberpunk chapter** — levels 11–15 trade the sunset for a neon-industrial night: dark purple tiles, neon-pink spikes and a grid-lit skyline. Crumbling platforms (marked `C`) tremble and collapse underfoot, and mobile laser emitters patrol the corridors.
+- 🤖 **Final boss** — level 15 is a boss arena. Dodge the mecha frog's half-screen laser volleys, touch all three overload switches (marked `S`), and watch the arena shake apart as you win.
 - 🌀 **Gravity zones** — amber-painted chambers (drawn as glowing zones) that **force gravity back to normal** and **lock the flip** while you're inside them, so you must ride the floor, not the ceiling.
 - 🎮 **Modern game-feel controller** — coyote time (0.1s), jump buffering (0.1s), variable jump height, acceleration/friction, **wall slide + wall jump**, and a **Blink** teleport (Shift): instantly jump 3 tiles forward, pass through hazards/enemies/thin walls with i-frames, on a strict cooldown. Fully frame-rate independent via a delta-time game loop.
 - 💫 **Blink afterimages** — every teleport leaves a translucent `globalAlpha` trail of fading goose copies showing exactly where you reappeared.
@@ -35,7 +37,7 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 - ⏱️ **Built-in speedrun timer** — per-level time in `MM:SS:ms` plus a full-run timer.
 - 🏆 **Best times + level select** — finish a level to unlock the next one; per-level and full-run bests are saved in `localStorage` and announced with a "NEW BEST" fanfare.
 - 👻 **Ghost replays** — every new best run is recorded and replayed as a translucent goose on later attempts. The ghost fades out as you catch up to it (< 60px).
-- ✨ **Golden Breadcrumbs** — optional bonus collectibles hidden in dangerous or hard-to-reach places, announced with floating `+1` / `Perfect!` popups. Grab every crumb for the 100% completion badge on the Victory screen; a lifetime counter is saved too.
+- ✨ **Golden Breadcrumbs** — optional bonus collectibles hidden in dangerous or hard-to-reach places, announced with floating `+1` / `Perfect!` popups. Grab every crumb for the 100% completion badge on the Victory screen; a lifetime counter is saved too. On Levels 6–15 a crumb also recharges a spent gravity flip.
 - ⚙️ **Settings menu** — pause anywhere to adjust **SFX volume** (Web Audio master gain) and toggle **screen shake** off for motion-sickness-friendly play.
 - 🧊 **Tunneling-proof physics** — swept AABB collision resolution in sub-tile steps, so nothing falls through the floor — even at terminal velocity or during lag spikes.
 - 🎼 **Procedural 8-bit audio** — every jump, flip, pickup, hurt and win is synthesized live with the Web Audio API, plus a looping chiptune soundtrack that **speeds up as you approach your best time**.
@@ -56,10 +58,10 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 | `A` / `D` or `←` / `→` | Move (acceleration & friction) |
 | `W` / `↑` | Jump — **tap** for a small hop, **hold** for full height |
 | `SHIFT` | Blink — instantly teleport 3 tiles (passes through hazards, enemies & thin walls; i-frames + cooldown) |
-| `SPACE` / **left-click** | Flip gravity (walk on ceilings). Levels 6–10: **once per airtime** — recharges on landing or on a golden breadcrumb |
+| `SPACE` / **left-click** | Flip gravity (walk on ceilings). Levels 6–15: **once per airtime** — recharges on landing or on a golden breadcrumb |
 | `ESC` | Pause |
 
-> Levels 1–5: flip freely. Levels 6–10: the HUD **stamina bar** empties with your flip; you get it back the moment your feet touch ground or you grab a golden breadcrumb. Gravity flips are purely visual — the goose turns upside-down, and that's it.
+> Levels 1–5: flip freely. Levels 6–15: the HUD **stamina bar** empties with your flip; you get it back the moment your feet touch ground or you grab a golden breadcrumb. Gravity flips are purely visual — the goose turns upside-down, and that's it.
 
 **Wall slide & wall jump:** hold into a wall while falling to slide down it slowly, then press Jump to kick off the wall in the opposite direction.
 
@@ -69,7 +71,7 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 2. Collect **all the bread** (`B`) in the level to advance.
 3. Avoid alien frogs and spike hazards — falling out of the world also costs a life.
 4. **Bonus:** collect the golden breadcrumbs (`c`) for a 100% completion run.
-5. Complete all **10 levels** to reach the Victory screen and see your final time.
+5. Complete all **15 levels** to reach the Victory screen and see your final time — the last one is a boss arena: touch all three `S` switches to overload the mecha frog.
 
 ---
 
@@ -161,8 +163,9 @@ js/
   Physics.js             Swept AABB collision engine (X then Y, sub-tile steps)
   Player.js              Goose controller: acceleration, coyote/buffer/variable jump,
                          wall slide/wall jump, blink teleport, gravity flip (gravity-relative ground checks)
-  LevelManager.js        The 10 levels (5 retro + 5 sunset) as 2D string matrices,
-                         parsing, gravity zones, theme + flip-limit per chapter
+  LevelManager.js        The 15 levels (5 retro + 5 sunset + 5 cyberpunk) as 2D
+                         string matrices, parsing, gravity zones, crumbling
+                         platforms, switches, lasers, boss, theme + flip-limit per chapter
   Camera.js              Smooth lerp follow camera with velocity lookahead + snap()
   SoundManager.js        Procedural 8-bit Web Audio SFX, looping chiptune soundtrack
                          (tempo ramps near a best time), master volume
@@ -174,6 +177,8 @@ js/
     Enemy.js             Alien frog: patrol, turn-around on walls, gravity
     Item.js              Bread collectible (bobbing animation)
     Crumb.js             Golden breadcrumb bonus collectible (twinkling)
+    Laser.js             Mobile hazard: patrols a neon beam along x or y
+    Boss.js              Level 15 mecha frog: telegraphs + fires half-screen laser volleys
     Ghost.js             Best-run replay: records + draws translucent ghost (proximity fade)
 assets/                  Custom pixel cursor PNGs (cursor.png, cursor-pointer.png)
 tests/
@@ -206,9 +211,9 @@ npm test
 The `tests/` folder contains four dependency-free Node suites that load the game modules in a sandboxed VM and assert real behavior:
 
 - `physics.test.js` — flush floor/wall/ceiling resolution, no tunneling at terminal velocity, inverted-gravity grounding, bounds, forgiving hazard-hitbox shrinking.
-- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge.
+- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge, crumbling-platform collapse.
 - `save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, ghost replays, settings, corrupt-storage fallback.
-- `levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one spawn and one bread; theme + flip-limit rules; gravity-zone and crumb placement.
+- `levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one spawn and one bread; theme + flip-limit rules; gravity-zone, crumb, crumbling-platform, laser and boss-arena placement.
 
 ---
 

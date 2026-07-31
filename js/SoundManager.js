@@ -206,6 +206,35 @@ class SoundManager {
         }
     }
 
+    // Heavy "clunk" when a boss-overload switch is activated.
+    playSwitch() {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            if (!this.ctx) return;
+
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(720, now + 0.12);
+            osc.frequency.exponentialRampToValueAtTime(140, now + 0.24);
+
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.26);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain || this.ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.26);
+        } catch (e) {
+            console.warn("Sound error:", e);
+        }
+    }
+
     // --- Background music ---------------------------------------------------
     //
     // A tiny procedural chiptune loop scheduled with a lookahead timer. There is

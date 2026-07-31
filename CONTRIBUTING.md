@@ -52,8 +52,9 @@ js/
   Physics.js             Swept AABB collision engine (X then Y, sub-tile steps)
   Player.js              Goose controller: acceleration, coyote/buffer/variable jump,
                          wall slide/wall jump, blink teleport, gravity flip (gravity-relative ground checks)
-  LevelManager.js        The 10 levels (5 retro + 5 sunset) as 2D string matrices,
-                         parsing, gravity zones, theme + flip-limit per chapter
+  LevelManager.js        The 15 levels (5 retro + 5 sunset + 5 cyberpunk) as 2D
+                         string matrices, parsing, gravity zones, crumbling
+                         platforms, switches, lasers, boss, theme + flip-limit per chapter
   Camera.js              Smooth lerp follow camera with velocity lookahead + snap()
   SoundManager.js        Procedural 8-bit Web Audio SFX, looping chiptune, master volume
   ParticleSystem.js      Spark/dust/feather particles
@@ -64,6 +65,8 @@ js/
     Enemy.js             Alien frog: patrol, turn-around on walls, gravity
     Item.js              Bread collectible (bobbing animation)
     Crumb.js             Golden breadcrumb bonus collectible (twinkling)
+    Laser.js             Mobile hazard: patrols a neon beam along x or y
+    Boss.js              Level 15 mecha frog: telegraphs + fires half-screen laser volleys
     Ghost.js             Best-run replay: records + draws translucent ghost (proximity fade)
 tests/                   Headless Node test suites (physics, player, save, levels)
 .github/workflows/       CI: test + deploy to GitHub Pages
@@ -138,6 +141,8 @@ Each character in a row maps to exactly one 32×32 tile:
 | `c` | Golden breadcrumb | Optional bonus collectible for 100% completion; on Levels 6–10 it also recharges a spent gravity flip |
 | `E` | Alien frog enemy | Patrols back and forth, turns around at walls |
 | `z` | Gravity zone | **Not solid.** Forces gravity back to normal and locks the flip while the goose is inside. Non-player entities ignore it. Only meaningful on Levels 6–10 |
+| `C` | Crumbling platform | Solid until the goose stands on it — then it trembles ~0.5s and collapses (resets on respawn). Works in any chapter |
+| `S` | Boss overload switch | **Not solid.** Touching one charges the boss; activate all three on the Level 15 arena to win. Only meaningful on the boss level |
 | ` ` (space) | Empty air | |
 
 ### The rules
@@ -148,8 +153,10 @@ Each character in a row maps to exactly one 32×32 tile:
 4. **Place at least one `B`** so the level can be completed.
 5. **Mind the reachability.** The goose jumps ~4 tiles high and ~7 tiles far (that's a deliberate, generous jump arc). Enemies and spikes on the other hand are always deadly.
 6. **Breadcrumbs are optional.** `c` should be risky-but-possible: in a spike corridor, on a high ledge that requires a gravity flip, or on an enemy patrol route. If a crumb is *impossible* to reach, that's a bug — always play-test.
-7. **Chapter rules are automatic.** The first 5 levels in `this.levels` are the *retro* chapter; index 5 and beyond are the *sunset* chapter — they get the dusk palette, **once-per-airtime gravity flips** (see `LevelManager.flipLimit`) and need gravity-zone routing. `z` tiles only make sense there.
+7. **Chapter rules are automatic.** The first 5 levels in `this.levels` are the *retro* chapter; indices 5–9 are the *sunset* chapter; indices 10–14 are the *cyberpunk* chapter. Both non-retro chapters get the dusk/neon palettes and the **once-per-airtime gravity flip** (see `LevelManager.flipLimit`); only the sunset chapter needs gravity-zone routing. `z` tiles only make sense there.
 8. **Gravity zones** (`z`) force the goose back to normal gravity and suppress flipping while inside. Build corridors that *force* the player to stay on the floor — walls of `z`, or a `z` floor under a ceiling-height path.
+9. **Crumbling platforms** (`C`) are solid until the goose lands on them; they shake for about half a second and then fall away, leaving a gap until respawn resets the level. Place them over hazards or over gaps so the goose must keep moving.
+10. **Boss switches** (`S`) are only useful on the boss arena (Level 15, index 14): the goose must touch all three to overload the mecha frog. Put them in exposed, risky spots — and keep them out of reach of a stationary camper.
 
 ### Step-by-step: add a brand-new level
 
@@ -163,10 +170,10 @@ this.levels = [
 ];
 ```
 
-Add a new array **before the closing `];`**. For example, a tiny "Spike Gauntlet" level (12 tiles wide × 9 tiles tall) — drop it in as a brand-new **11th** level:
+Add a new array **before the closing `];`**. For example, a tiny "Spike Gauntlet" level (12 tiles wide × 9 tiles tall) — drop it in as a brand-new **16th** level:
 
 ```js
-// Level 11: The Spike Gauntlet
+// Level 16: The Spike Gauntlet
 [
     "############",      // solid ceiling
     "#       ^  #",      // a ceiling spike
@@ -185,6 +192,8 @@ Let's verify the rules:
 - Borders: row 0 and row 7 are solid `#`, and every row starts/ends with `#`. ✅
 - One `P` (row 5), one `B` (row 5). ✅
 - The `c` sits next to the ceiling spike — jump from the platform at row 2, or flip gravity and walk the ceiling. Risky, but fair. ✅
+
+> Because it's appended after the 15 shipped levels, it lands at index 15 and automatically gets the **cyberpunk** palette plus the once-per-airtime flip rule — pure index-based theming, no other code to touch.
 
 > 💡 **Tip for designing:** sketch the level on graph paper (or a spreadsheet) first, then transcribe each row. Keep the goose's 28×28 hitbox and 32px tiles in mind — a gap of one tile is enough to pass through, two tiles is comfortable.
 
@@ -209,9 +218,9 @@ npm test
 The suites are plain Node scripts with zero dependencies. They load the relevant modules from `js/` with `vm.runInThisContext` (no DOM needed) and assert real behavior:
 
 - `tests/physics.test.js` — floor/wall/ceiling resolution is flush, no tunneling at terminal velocity, inverted-gravity grounding, world bounds.
-- `tests/player.test.js` — acceleration to max speed, friction, variable jump height, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge.
+- `tests/player.test.js` — acceleration to max speed, friction, variable jump height, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge, crumbling-platform collapse.
 - `tests/save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, settings, and survival across instances/corrupt storage.
-- `tests/levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one `P` and at least one `B`; correct themes and flip-limits; gravity-zone and crumb placement.
+- `tests/levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one `P` and at least one `B`; correct themes and flip-limits; gravity-zone, crumb, crumbling-platform, laser and boss-arena placement; laser patrol bounds; boss attack cycle.
 
 The CI workflow (`.github/workflows/deploy.yml`) runs these before every Pages deployment, so a failing suite blocks the deploy. Keep it green!
 
@@ -225,9 +234,13 @@ The headless tests cover physics and the controller, but they can't play the gam
 - [ ] Level select shows locked/unlocked levels with best times; finishing a level unlocks the next one.
 - [ ] The goose moves with acceleration/friction and jumps with variable height.
 - [ ] `SPACE` flips gravity; the goose lands on the ceiling and jumps "down". **No** border glow or screen flash changes on flip — just the goose turning upside-down.
-- [ ] Levels 6–10 use the **sunset** palette (amber tiles, orange spikes, dusk sky) and show the **FLIP stamina bar** in the HUD.
-- [ ] On Levels 6–10, flipping mid-air uses the one shot; landing recharges it; a golden breadcrumb recharges it mid-air too.
+- [ ] Levels 6–10 use the **sunset** palette (amber tiles, orange spikes, dusk sky) and Levels 6–15 show the **FLIP stamina bar** in the HUD.
+- [ ] On Levels 6–15, flipping mid-air uses the one shot; landing recharges it; a golden breadcrumb recharges it mid-air too.
 - [ ] **Gravity zones** (`z`) appear as amber boxes; inside one the goose snaps to normal gravity and `SPACE`/click does nothing.
+- [ ] Levels 11–15 use the **cyberpunk** palette (dark purple tiles, neon-pink spikes, grid-lit skyline).
+- [ ] **Crumbling platforms** (`C`) shake under the goose and collapse after ~0.5s; a respawn restores them.
+- [ ] **Lasers** patrol their routes and kill only on deep contact; blinking through them is safe.
+- [ ] **Level 15 boss:** the mecha frog telegraphs then fires a top or bottom half-screen laser; touching an `S` switch pops `OVERLOAD!` and shakes the arena; the third switch triggers the death sequence and the Final Victory screen.
 - [ ] `SHIFT` **Blink** teleports 3 tiles instantly: passes through spikes/enemies and one-tile walls, stops at thick walls and the border, leaves a fading afterimage trail, and shows a cooldown on the HUD.
 - [ ] Dying respawns instantly at the spawn point (no page reload / game-over delay), with a glitch flash + rewind sound; the level timer resets and previously collected crumbs reappear.
 - [ ] Spike/enemy contact only registers when the goose is **deeply** inside the hazard — grazing the edge of the sprite never kills.
@@ -236,7 +249,7 @@ The headless tests cover physics and the controller, but they can't play the gam
 - [ ] Every `B` in the new level is reachable; collecting all of them ends the level.
 - [ ] Every `c` is collectible (attempt each one); the HUD `CRUMBS n/N` updates.
 - [ ] Enemies patrol and turn around; spikes kill on contact.
-- [ ] Falling off the level costs a life; 0 lives shows GAME OVER; the Victory screen appears after level 10.
+- [ ] Falling off the level costs a life; 0 lives shows GAME OVER; the Victory screen appears after level 15.
 - [ ] The timer runs in-game, freezes on pause, and shows on the level/victory screens.
 
 ---

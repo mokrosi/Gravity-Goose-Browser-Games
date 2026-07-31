@@ -17,6 +17,12 @@ function load(rel) {
 load('entities/Entity.js');
 load('Physics.js');
 load('Player.js');
+load('entities/Item.js');
+load('entities/Crumb.js');
+load('entities/Enemy.js');
+load('entities/Laser.js');
+load('entities/Boss.js');
+load('LevelManager.js');
 
 const T = 32;
 let pass = 0;
@@ -615,6 +621,30 @@ console.log('--- Player controller tests ---');
     p.update(1 / 60, noInput, flat, soundStub, particleStub);
     assert(p.inGravityZone === false, 'left the zone');
     assert(p.canFlip === true, 'flip re-enabled outside the zone');
+}
+
+// 25. Crumbling platforms: standing on one makes it tremble and collapse
+{
+    const lm = new LevelManager();
+    lm.levels.push([
+        '################',
+        '#..............#',
+        '#...CCC........#',
+        '#..............#',
+        '#..............#',
+        '################'
+    ]);
+    lm.loadLevel(lm.levels.length - 1);
+    const p = new Player(4 * T, 1 * T);
+    run(p, 120, noInput, lm);
+    assert(p.onGround === true, 'goose rests on the crumbling platform');
+    assert(lm.isSolid(4, 2) === true, 'platform solid while intact');
+    lm.updateCrumbling(0.6, p);
+    assert(lm.crumbles[0].broken === true, 'platform collapses under the goose');
+    assert(lm.isSolid(4, 2) === false, 'collapsed platform is not solid');
+    lm.resetCrumbles();
+    assert(lm.isSolid(4, 2) === true, 'platform restored after reset');
+    lm.levels.pop();
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
