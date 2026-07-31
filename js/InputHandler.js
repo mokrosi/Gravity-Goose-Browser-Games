@@ -31,6 +31,27 @@ class InputHandler {
             this.pressed = {};
             this.released = {};
         });
+
+        // Mouse / keyboard parity: left click is a full alias for the jump key.
+        // Treated as a virtual 'Mouse0' code so gameplay code reads it exactly
+        // like a keyboard press (edge-triggered, cleared by update()).
+        window.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            const tag = e.target && e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return;
+            if (!this.keys['Mouse0']) {
+                this.pressed['Mouse0'] = true;
+            }
+            this.keys['Mouse0'] = true;
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button !== 0) return;
+            if (this.keys['Mouse0']) {
+                this.released['Mouse0'] = true;
+            }
+            this.keys['Mouse0'] = false;
+        });
     }
 
     // Call once per frame AFTER gameplay logic runs to clear edge-triggered flags

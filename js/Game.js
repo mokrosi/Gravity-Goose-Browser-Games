@@ -35,8 +35,12 @@ class Game {
         this.totalCrumbCollected = 0;
         this.totalCrumbs = 0;
 
+        // Best-run ghost replay
+        this.ghost = new Ghost();
+
         // Cached HUD element updated every frame
         this.hudTimeEl = document.getElementById('hud-time');
+        this.hudDashEl = document.getElementById('hud-dash');
 
         // Parallax stars
         this.stars = [];
@@ -145,6 +149,9 @@ class Game {
         if (!this.save.isLevelUnlocked(index)) return;
         this.soundManager.init();
         this.soundManager.playStart();
+        this.soundManager.startMusic();
+        this.ghost.load(this.save.getGhost(index));
+        this.ghost.startRecording();
         this.score = 0;
         this.lives = 3;
         this.currentLevel = index;
@@ -204,16 +211,19 @@ class Game {
 
     pauseGame() {
         this.state = 'PAUSED';
+        this.soundManager.stopMusic();
         this.showScreen('pause-screen');
     }
 
     resumeGame() {
         this.state = 'PLAYING';
+        this.soundManager.startMusic();
         this.hideAllScreens();
     }
 
     quitToMenu() {
         this.state = 'START';
+        this.soundManager.stopMusic();
         this.showScreen('start-screen');
         document.getElementById('hud').classList.add('hidden');
     }
@@ -278,6 +288,20 @@ class Game {
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}:${String(ms).padStart(3, '0')}`;
     }
 
+    // Spawn a temporary floating DOM label (e.g. "+1") over the canvas at a
+    // world position. Animated with CSS keyframes, then removed when it ends.
+    spawnFloatText(text, worldX, worldY, extraClass) {
+        const layer = document.getElementById('float-layer');
+        if (!layer) return;
+        const el = document.createElement('div');
+        el.className = 'float-text' + (extraClass ? ' ' + extraClass : '');
+        el.innerText = text;
+        el.style.left = ((worldX - this.camera.x) / this.canvas.width * 100) + '%';
+        el.style.top = ((worldY - this.camera.y) / this.canvas.height * 100) + '%';
+        layer.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+    }
+
     start() {
         this.assetManager.isDone().then(() => {
             this.lastTime = performance.now();
@@ -294,8 +318,24 @@ class Game {
         if (this.hudTimeEl) {
             this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
         }
+        if (this.hudDashEl) {
+            this.hudDashEl.innerText = this.player.canDash
+                ? 'READY'
+                : this.player.dashCooldown.toFixed(1);
+        }
+
+        // Background music speeds up while the player closes in on their best time
+        const best = this.save.getBestTime(this.currentLevel);
+        if (best !== null) {
+            const remaining = best - this.levelTimer;
+            const ratio = Math.max(0, Math.min(1, (10 - remaining) / 10));
+            this.soundManager.setMusicIntensity(ratio);
+        } else {
+            this.soundManager.setMusicIntensity(0);
+        }
 
         this.player.update(dt, this.input, this.levelManager, this.soundManager, this.particleSystem);
+        this.ghost.sample(this.levelTimer, this.player);
         this.particleSystem.update(dt);
 
         // Sprint dust particles while the goose is running at top speed
@@ -323,6 +363,7 @@ class Game {
 
             if (this.lives <= 0) {
                 this.state = 'GAME_OVER';
+                this.soundManager.stopMusic();
                 this.showScreen('game-over-screen');
                 document.getElementById('hud').classList.add('hidden');
             } else {
@@ -374,6 +415,13 @@ class Game {
                 this.save.addCrumb();
                 this.soundManager.playCrumb();
                 this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
+                const perfect = this.crumbCollected === this.crumbTotal;
+                this.spawnFloatText(
+                    perfect ? 'Perfect!' : '+1',
+                    crumb.x + crumb.width / 2,
+                    crumb.y + crumb.height / 2,
+                    perfect ? 'perfect' : 'crumb'
+                );
                 this.updateHUD();
             }
         }
@@ -392,13 +440,17 @@ class Game {
                 bestEl.innerText = 'NEW BEST TIME!';
                 bestEl.classList.add('best-flash');
                 this.soundManager.playBest();
+                // Persist this run as the ghost replay for future attempts.
+                this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
             } else {
+                this.ghost.stopRecording();
                 bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
                 bestEl.classList.remove('best-flash');
             }
             // Completing a level unlocks the next one in the level select.
             this.save.unlockLevel(this.currentLevel + 1);
 
+            this.soundManager.stopMusic();
             this.showScreen('level-complete-screen');
         }
 
@@ -470,6 +522,11 @@ class Game {
 
             if (this.player) {
                 this.player.draw(this.ctx, this.camera, this.assetManager);
+            }
+
+            // Best-run ghost replay (fades as the player catches up to it)
+            if (this.player) {
+                this.ghost.draw(this.ctx, this.camera, this.assetManager, this.levelTimer, this.player);
             }
 
             this.particleSystem.draw(this.ctx, this.camera);

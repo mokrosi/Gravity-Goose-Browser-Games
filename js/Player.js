@@ -8,6 +8,12 @@ class Player extends Entity {
     static COYOTE_TIME = 0.1;
     static JUMP_BUFFER_TIME = 0.1;
     static JUMP_CUT = 0.5;
+    static WALL_SLIDE_SPEED = 120;
+    static WALL_JUMP_VX = 360;
+    static WALL_JUMP_VY = 500;
+    static DASH_SPEED = 520;
+    static DASH_TIME = 0.2;
+    static DASH_COOLDOWN = 0.6;
 
     constructor(x, y) {
         super(x, y, 28, 28);
@@ -18,6 +24,10 @@ class Player extends Entity {
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
         this.walkCycle = 0;
+        this.wallDir = 0;
+        this.wallSliding = false;
+        this.dashTimer = 0;
+        this.dashCooldown = 0;
     }
 
     get gravitySign() {
@@ -28,11 +38,17 @@ class Player extends Entity {
         return this.onGround && Math.abs(this.vx) > Player.MAX_SPEED * 0.8;
     }
 
+    get canDash() {
+        return this.dashCooldown <= 0;
+    }
+
     flipGravity(soundManager, particleSystem) {
         this.gravity = -this.gravity;
         this.onGround = false;
         this.onCeiling = false;
         this.coyoteTimer = 0;
+        this.wallSliding = false;
+        this.wallDir = 0;
         this.vy = this.gravitySign * 80;
         if (soundManager) soundManager.playFlip();
         if (particleSystem) {
@@ -44,6 +60,19 @@ class Player extends Entity {
         }
     }
 
+    // Is there a solid tile immediately beside the player in `dir`?
+    _touchingWall(level, dir) {
+        const ts = Physics.TILE_SIZE;
+        const edge = dir > 0 ? this.x + this.width : this.x - 1;
+        const col = Math.floor(edge / ts);
+        const rowStart = Math.floor(this.y / ts);
+        const rowEnd = Math.floor((this.y + this.height - 1) / ts);
+        for (let row = rowStart; row <= rowEnd; row++) {
+            if (level.isSolid(col, row)) return true;
+        }
+        return false;
+    }
+
     update(dt, input, level, soundManager, particleSystem) {
         if (this.isDead) return;
 
@@ -52,26 +81,51 @@ class Player extends Entity {
             this.flipGravity(soundManager, particleSystem);
         }
 
-        // --- Horizontal: acceleration & friction ---
+        // --- Horizontal: acceleration & friction (disabled mid-dash) ---
         let dir = 0;
         if (input.isKeyDown('ArrowLeft') || input.isKeyDown('KeyA')) dir--;
         if (input.isKeyDown('ArrowRight') || input.isKeyDown('KeyD')) dir++;
 
-        if (dir !== 0) {
-            this.facingRight = dir > 0;
-            this.vx += dir * Player.ACCELERATION * dt;
-            this.vx = Player.clamp(this.vx, -Player.MAX_SPEED, Player.MAX_SPEED);
-        } else {
-            const friction = Player.FRICTION * dt;
-            if (Math.abs(this.vx) <= friction) {
-                this.vx = 0;
+        if (this.dashTimer <= 0) {
+            if (dir !== 0) {
+                this.facingRight = dir > 0;
+                this.vx += dir * Player.ACCELERATION * dt;
+                this.vx = Player.clamp(this.vx, -Player.MAX_SPEED, Player.MAX_SPEED);
             } else {
-                this.vx -= Math.sign(this.vx) * friction;
+                const friction = Player.FRICTION * dt;
+                if (Math.abs(this.vx) <= friction) {
+                    this.vx = 0;
+                } else {
+                    this.vx -= Math.sign(this.vx) * friction;
+                }
             }
         }
 
+        // --- Dash (Shift): horizontal burst, gravity-off window, cooldown ---
+        this.dashCooldown = Math.max(0, this.dashCooldown - dt);
+        this.dashTimer = Math.max(0, this.dashTimer - dt);
+        if ((input.isKeyPressed('ShiftLeft') || input.isKeyPressed('ShiftRight')) && this.canDash) {
+            this.dashTimer = Player.DASH_TIME;
+            this.dashCooldown = Player.DASH_COOLDOWN;
+            const dashDir = dir !== 0 ? dir : (this.facingRight ? 1 : -1);
+            this.vx = dashDir * Player.DASH_SPEED;
+            this.vy = 0;
+            if (soundManager) soundManager.playDash();
+            if (particleSystem) particleSystem.emitDash(this.x + this.width / 2, this.y + this.height / 2, dashDir);
+        } else if (this.dashTimer > 0 && particleSystem && Math.random() < 0.5) {
+            particleSystem.emitDash(this.x + this.width / 2, this.y + this.height / 2, this.facingRight);
+        }
+
+        // --- Wall detection: pressing toward a wall while airborne ---
+        this.wallDir = 0;
+        const pressingLeft = input.isKeyDown('ArrowLeft') || input.isKeyDown('KeyA');
+        const pressingRight = input.isKeyDown('ArrowRight') || input.isKeyDown('KeyD');
+        if (pressingLeft && this._touchingWall(level, -1)) this.wallDir = -1;
+        else if (pressingRight && this._touchingWall(level, 1)) this.wallDir = 1;
+
         // --- Jump buffering: remember presses made just before landing ---
-        const jumpPressed = input.isKeyPressed('KeyW') || input.isKeyPressed('ArrowUp');
+        // Mouse click (Left) is a full mouse/keyboard parity alias for jump.
+        const jumpPressed = input.isKeyPressed('KeyW') || input.isKeyPressed('ArrowUp') || input.isKeyPressed('Mouse0');
         if (jumpPressed) {
             this.jumpBufferTimer = Player.JUMP_BUFFER_TIME;
         } else {
@@ -83,23 +137,43 @@ class Player extends Entity {
             ? Player.COYOTE_TIME
             : Math.max(0, this.coyoteTimer - dt);
 
-        // --- Buffered jump execution (adapts to inverted gravity) ---
-        if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0) {
+        // --- Wall slide: falling while pressed against a wall ---
+        this.wallSliding = this.wallDir !== 0 && !this.onGround && this.vy * this.gravitySign > 0;
+
+        // --- Buffered ground jump execution (adapts to inverted gravity) ---
+        if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0 && !this.wallSliding) {
             this.vy = -this.gravitySign * Player.JUMP_VELOCITY;
             this.jumpBufferTimer = 0;
             this.coyoteTimer = 0;
             if (soundManager) soundManager.playJump();
         }
 
+        // --- Wall jump: burst away from the wall + up from the slide ---
+        if (this.wallSliding && jumpPressed) {
+            this.vx = -this.wallDir * Player.WALL_JUMP_VX;
+            this.vy = -this.gravitySign * Player.WALL_JUMP_VY;
+            this.jumpBufferTimer = 0;
+            this.coyoteTimer = 0;
+            this.wallSliding = false;
+            if (soundManager) soundManager.playJump();
+        }
+
         // --- Variable jump height: releasing early cuts the ascent ---
-        const jumpReleased = input.isKeyReleased('KeyW') || input.isKeyReleased('ArrowUp');
+        const jumpReleased = input.isKeyReleased('KeyW') || input.isKeyReleased('ArrowUp') || input.isKeyReleased('Mouse0');
         if (jumpReleased && this.vy * this.gravitySign < 0) {
             this.vy *= Player.JUMP_CUT;
         }
 
-        // --- Gravity (scaled by dt) with terminal velocity ---
-        this.vy += this.gravity * dt;
-        this.vy = Player.clamp(this.vy, -Player.MAX_FALL_SPEED, Player.MAX_FALL_SPEED);
+        // --- Gravity (scaled by dt) with terminal velocity; disabled while dashing ---
+        if (this.dashTimer <= 0) {
+            this.vy += this.gravity * dt;
+            this.vy = Player.clamp(this.vy, -Player.MAX_FALL_SPEED, Player.MAX_FALL_SPEED);
+        }
+
+        // --- Wall slide caps the fall speed so the wall is climbable ---
+        if (this.wallSliding && this.vy * this.gravitySign > Player.WALL_SLIDE_SPEED) {
+            this.vy = this.gravitySign * Player.WALL_SLIDE_SPEED;
+        }
 
         // --- Axis-separated collision resolution ---
         Physics.resolveX(this, level, dt);

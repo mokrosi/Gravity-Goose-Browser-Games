@@ -19,6 +19,7 @@ class SaveManager {
             bestTimes: {},        // { [levelIndex]: seconds }
             bestTotal: null,      // seconds, or null if no run finished yet
             totalCrumbs: 0,       // lifetime golden breadcrumbs collected
+            ghosts: {},           // { [levelIndex]: [{t,x,y}, ...] } best-run replays
             settings: {
                 sfxVolume: 0.8,   // 0..1 master volume
                 screenShake: true // accessibility: disable motion-heavy shake
@@ -103,6 +104,18 @@ class SaveManager {
         this.save();
     }
 
+    // --- Ghost replays ------------------------------------------------------
+
+    getGhost(index) {
+        return this.data.ghosts[index] !== undefined ? this.data.ghosts[index] : null;
+    }
+
+    setGhost(index, points) {
+        if (!points || points.length === 0) return;
+        this.data.ghosts[index] = points;
+        this.save();
+    }
+
     // --- Settings ----------------------------------------------------------
 
     getSfxVolume() {
@@ -129,6 +142,7 @@ class SaveManager {
         this.data.bestTimes = {};
         this.data.bestTotal = null;
         this.data.totalCrumbs = 0;
+        this.data.ghosts = {};
         this.data.unlocked = [0];
         this.save();
     }

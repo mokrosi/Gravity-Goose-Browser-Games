@@ -146,7 +146,25 @@ console.log('--- SaveManager tests ---');
     assert(save.getScreenShake() === false, 'reset keeps screen shake setting');
 }
 
-// 9. Corrupt stored JSON falls back to defaults without throwing
+// 9. Ghost replays persist per level and clear on reset
+{
+    global.localStorage = freshLocalStorage();
+    const writer = new SaveManager();
+    assert(writer.getGhost(0) === null, 'no ghost by default');
+    writer.setGhost(0, [{ t: 0, x: 10, y: 20 }, { t: 0.5, x: 40, y: 30 }]);
+    writer.setGhost(1, []);
+    assert(writer.getGhost(0).length === 2, 'ghost recording stored');
+
+    const reader = new SaveManager();
+    assert(reader.getGhost(0).length === 2, 'ghost persists across instances');
+    assert(reader.getGhost(0)[1].x === 40, 'ghost points preserved');
+    assert(reader.getGhost(1) === null, 'empty recording is not saved');
+
+    reader.resetRunRecords();
+    assert(reader.getGhost(0) === null, 'reset clears ghost replays');
+}
+
+// 10. Corrupt stored JSON falls back to defaults without throwing
 {
     const store = { 'gravityGoose.save': '{{{ not json' };
     global.localStorage = {

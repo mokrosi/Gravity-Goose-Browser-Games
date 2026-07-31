@@ -17,6 +17,7 @@
                 <div class="hud-item">TIME <span id="hud-time">00:00:000</span></div>
                 <div class="hud-item">BREAD 🍞 <span id="hud-score">0</span></div>
                 <div class="hud-item">CRUMBS <span id="hud-crumbs">0/0</span></div>
+                <div class="hud-item">DASH <span id="hud-dash">READY</span></div>
                 <div class="hud-item"><span id="hud-lives">❤️❤️❤️</span></div>
             </div>
         </div>
@@ -24,6 +25,9 @@
         <div id="game-container">
             <!-- Canvas for the game -->
             <canvas id="game-canvas" width="800" height="600"></canvas>
+
+            <!-- Floating text layer (e.g. crumb "+1" pickups) -->
+            <div id="float-layer"></div>
             
             <!-- Glassmorphism UI Overlay Layer -->
             <div id="ui-layer">
@@ -35,8 +39,10 @@
                     <p class="subtitle">Aliens stole your sandwich. Steal their gravity!</p>
                     <div class="controls-card">
                         <p><span class="key">A</span> / <span class="key">D</span> or <span class="key">←</span> <span class="key">→</span> Move</p>
-                        <p><span class="key">W</span> / <span class="key">↑</span> Jump <span class="key">(hold</span> for full height)</p>
+                        <p><span class="key">W</span> / <span class="key">↑</span> / <span class="key">CLICK</span> Jump <span class="key">(hold</span> for full height)</p>
+                        <p><span class="key">SHIFT</span> Dash <span class="key">(works</span> in mid-air)</p>
                         <p><span class="key">SPACE</span> Flip Gravity</p>
+                        <p>Slide down walls & <span class="key">jump</span> off them!</p>
                     </div>
                     <button id="btn-start" class="btn">START GAME</button>
                     <button id="btn-level-select" class="btn btn-ghost">LEVEL SELECT</button>
@@ -117,6 +123,7 @@
     <script src="js/entities/Item.js"></script>
     <script src="js/entities/Crumb.js"></script>
     <script src="js/entities/Enemy.js"></script>
+    <script src="js/entities/Ghost.js"></script>
     <script src="js/Player.js"></script>
     <script src="js/Physics.js"></script>
     <script src="js/AssetManager.js"></script>

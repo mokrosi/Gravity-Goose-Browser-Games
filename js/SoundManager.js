@@ -4,6 +4,11 @@ class SoundManager {
         this.masterGain = null;
         this.enabled = true;
         this.volume = 0.8; // 0..1 master volume
+        // Procedural background music loop state
+        this.musicTimer = null;
+        this.musicBeat = 0;
+        this.musicBpm = 100;
+        this.musicNextTime = 0;
     }
 
     init() {
@@ -142,6 +147,129 @@ class SoundManager {
             osc.stop(now + 0.11);
         } catch (e) {
             console.warn("Sound error:", e);
+        }
+    }
+
+    playDash() {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            if (!this.ctx) return;
+
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.14);
+
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain || this.ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.16);
+        } catch (e) {
+            console.warn("Sound error:", e);
+        }
+    }
+
+    // --- Background music ---------------------------------------------------
+    //
+    // A tiny procedural chiptune loop scheduled with a lookahead timer. There is
+    // no audio file: each step builds a kick / bass / lead / hat from a single
+    // oscillator. `setMusicIntensity` ramps the tempo (a playback-rate proxy),
+    // which the game drives up to 1.3x while the player approaches a best time.
+
+    startMusic() {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            if (!this.ctx || this.musicTimer) return;
+            this.musicBeat = 0;
+            this.musicBpm = 100;
+            this.musicNextTime = this.ctx.currentTime + 0.05;
+            this.musicTimer = setInterval(() => this._scheduleMusic(), 25);
+        } catch (e) {
+            console.warn("Sound error:", e);
+        }
+    }
+
+    stopMusic() {
+        if (this.musicTimer) {
+            clearInterval(this.musicTimer);
+            this.musicTimer = null;
+        }
+    }
+
+    // ratio 0..1: 0 = calm (100 BPM / 1.0x), 1 = hype (130 BPM / 1.3x)
+    setMusicIntensity(ratio) {
+        this.musicBpm = 100 + Math.max(0, Math.min(1, ratio)) * 30;
+    }
+
+    _scheduleMusic() {
+        if (!this.ctx) return;
+        const stepTime = 60 / this.musicBpm / 4;
+        while (this.musicNextTime < this.ctx.currentTime + 0.15) {
+            this._musicStep(this.musicBeat, this.musicNextTime);
+            this.musicNextTime += stepTime;
+            this.musicBeat = (this.musicBeat + 1) % 32;
+        }
+    }
+
+    _musicStep(step, time) {
+        const bassNotes = [110.0, 110.0, 130.81, 146.83]; // A2, A2, C3, D3
+        const bassFreq = bassNotes[Math.floor(step / 8) % 4];
+        const leadNotes = [440, 523.25, 659.25, 587.33, 493.88, 587.33, 659.25, 783.99];
+        const leadFreq = leadNotes[step % 8];
+
+        const mk = (type, freq, gainV, dur) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(gainV, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+            osc.connect(gain);
+            gain.connect(this.masterGain || this.ctx.destination);
+            osc.start(time);
+            osc.stop(time + dur);
+        };
+
+        const step16 = 60 / this.musicBpm / 4;
+
+        // Kick on every downbeat of the 4/4 bar
+        if (step % 8 === 0) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            gain.gain.setValueAtTime(0.5, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+            osc.connect(gain);
+            gain.connect(this.masterGain || this.ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.12);
+        }
+
+        // Quarter-note bass line
+        if (step % 4 === 0) {
+            mk('square', bassFreq, 0.11, step16 * 3.5);
+        }
+
+        // Eighth-note lead arpeggio, up an octave on the second half of the bar
+        if (step % 2 === 0) {
+            const oct = step % 16 >= 8 ? 2 : 1;
+            mk('triangle', leadFreq * oct, 0.07, step16 * 1.8);
+        }
+
+        // Off-beat hi-hat
+        if (step % 2 === 1) {
+            mk('square', 6000, 0.015, step16 * 0.9);
         }
     }
 

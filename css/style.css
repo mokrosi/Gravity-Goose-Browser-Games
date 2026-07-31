@@ -27,6 +27,18 @@ body {
     align-items: center;
     min-height: 100vh;
     overflow: hidden;
+    /* Custom pixel cursor */
+    cursor: url('assets/cursor.png') 0 0, auto;
+}
+
+/* Pointer variant over clickable UI */
+button,
+.level-btn,
+input[type="range"],
+input[type="checkbox"],
+select,
+a {
+    cursor: url('assets/cursor-pointer.png') 7 7, pointer;
 }
 
 /* Arcade Cabinet Bezel Wrapper */
@@ -132,6 +144,40 @@ body {
 
 .shake {
     animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* Floating text layer (crumb pickups, best-run popups) */
+#float-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.float-text {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--neon-yellow);
+    text-shadow: 2px 2px 0 #000, 0 0 10px var(--neon-yellow);
+    white-space: nowrap;
+    animation: floatUp 0.9s ease-out forwards;
+}
+
+.float-text.perfect {
+    font-size: 18px;
+    color: var(--neon-pink);
+    text-shadow: 2px 2px 0 #000, 0 0 14px var(--neon-pink);
+}
+
+@keyframes floatUp {
+    0%   { opacity: 1; transform: translate(-50%, -50%); }
+    100% { opacity: 0; transform: translate(-50%, -170%); }
 }
 
 /* UI Glassmorphism Layer */

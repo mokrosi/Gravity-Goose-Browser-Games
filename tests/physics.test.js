@@ -44,11 +44,11 @@ class Level {
 
 const soundStub = {
     playJump() {}, playFlip() {}, playCrumb() {}, playBest() {},
-    playCollect() {}, playWin() {}, playHurt() {}, playStart() {},
+    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playDash() {},
 };
 const particleStub = {
     emitGravityFlip() {}, emitFootstep() {}, emitCrumbCollect() {},
-    emitBreadCollect() {}, emitHurt() {},
+    emitBreadCollect() {}, emitHurt() {}, emitDash() {},
 };
 const noInput = {
     isKeyDown: () => false,

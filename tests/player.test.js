@@ -75,11 +75,11 @@ class KeyInput {
 const noInput = { isKeyDown: () => false, isKeyPressed: () => false, isKeyReleased: () => false, beginFrame: () => {} };
 const soundStub = {
     playJump() {}, playFlip() {}, playCrumb() {}, playBest() {},
-    playCollect() {}, playWin() {}, playHurt() {}, playStart() {},
+    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playDash() {},
 };
 const particleStub = {
     emitGravityFlip() {}, emitFootstep() {}, emitCrumbCollect() {},
-    emitBreadCollect() {}, emitHurt() {},
+    emitBreadCollect() {}, emitHurt() {}, emitDash() {},
 };
 
 function run(p, frames, input, level) {
@@ -120,6 +120,27 @@ const ledge = new Level([
     '................',
     '................',
     '................',
+    '################',
+]);
+
+// Tall corridor: a long fall past the solid left/right border walls so wall
+// slide / wall jump have room to be exercised before reaching the floor.
+const tallCorridor = new Level([
+    '################',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
     '################',
 ]);
 
@@ -341,6 +362,79 @@ console.log('--- Player controller tests ---');
         guard++;
     }
     assert(p.isRunningFast === false, 'isRunningFast false when decelerating');
+}
+
+// 14. Wall slide: pressing into a wall while falling clamps the fall speed
+{
+    const p = new Player(450, 3 * T);
+    const input = new KeyInput();
+    input.press('KeyD');
+    run(p, 30, input, tallCorridor);
+    assert(p.wallSliding === true, 'slides while pressing into the wall');
+    assert(p.vy > 0 && p.vy <= Player.WALL_SLIDE_SPEED + 0.01, 'fall speed capped while wall sliding');
+}
+
+// 15. Wall jump: pressing jump while sliding launches away from the wall
+{
+    const p = new Player(450, 3 * T);
+    const input = new KeyInput();
+    input.press('KeyD');
+    run(p, 30, input, tallCorridor);
+    input.press('KeyW');
+    p.update(1 / 60, input, tallCorridor, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.vx < 0, 'wall jump launches away from the wall');
+    assert(p.vy < -300, 'wall jump kicks upward');
+    assert(p.wallSliding === false, 'wall jump ends the slide');
+}
+
+// 16. Dash: Shift bursts horizontally and disables gravity for its window
+{
+    const p = new Player(2 * T, 5 * T);
+    const input = new KeyInput();
+    input.press('KeyD');
+    run(p, 10, input, flat);
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.vx === Player.DASH_SPEED, 'dash sets horizontal velocity');
+    assert(p.vy === 0, 'dash zeroes vertical velocity');
+    run(p, 8, input, flat);
+    assert(p.dashTimer > 0, 'dash stays active for its window');
+    assert(p.vy === 0, 'gravity is disabled while dashing');
+    assert(p.dashCooldown > 0, 'dash enters cooldown');
+}
+
+// 17. Dash cooldown: a second press is ignored until the cooldown expires
+{
+    const p = new Player(2 * T, 5 * T);
+    const input = new KeyInput();
+    input.press('KeyD');
+    run(p, 10, input, flat);
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    const timerAfterFirst = p.dashTimer;
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.dashTimer < timerAfterFirst, 'second dash is ignored during cooldown');
+    assert(p.vx === Player.DASH_SPEED, 'dash velocity not re-applied during cooldown');
+}
+
+// 18. Mouse/keyboard parity: left click jumps exactly like the jump key
+{
+    const p = new Player(2 * T, 10 * T);
+    run(p, 30, noInput, flat);
+    const input = new KeyInput();
+    input.press('Mouse0');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.vy < 0, 'left click launches a jump');
+    input.release('Mouse0');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.vy < 0 && p.vy > -400, 'releasing the click cuts the jump like releasing W');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

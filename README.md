@@ -24,15 +24,18 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 ## ✨ Features
 
 - 🧲 **Anti-gravity mechanic** — press `SPACE` to instantly flip gravity and walk on the ceiling. Jumps, landings and coyote time all adapt to the gravity direction.
-- 🎮 **Modern game-feel controller** — coyote time (0.1s), jump buffering (0.1s), variable jump height, and acceleration/friction. Fully frame-rate independent via a delta-time game loop.
+- 🎮 **Modern game-feel controller** — coyote time (0.1s), jump buffering (0.1s), variable jump height, acceleration/friction, **wall slide + wall jump**, and a **dash** (Shift) with a brief gravity-off window and cooldown. Fully frame-rate independent via a delta-time game loop.
+- 🖱️ **Mouse & keyboard parity** — left-click jumps exactly like `W`/`↑`, so you can play entirely with the mouse or switch freely between input styles.
 - 🎥 **Smooth lerp camera** — the viewport glides toward the goose with a mathematical `lerp`, and *leads ahead* based on velocity so you can see what's coming.
 - ⏱️ **Built-in speedrun timer** — per-level time in `MM:SS:ms` plus a full-run timer.
 - 🏆 **Best times + level select** — finish a level to unlock the next one; per-level and full-run bests are saved in `localStorage` and announced with a "NEW BEST" fanfare.
-- ✨ **Golden Breadcrumbs** — optional bonus collectibles hidden in dangerous or hard-to-reach places. Grab every crumb for the 100% completion badge on the Victory screen; a lifetime counter is saved too.
+- 👻 **Ghost replays** — every new best run is recorded and replayed as a translucent goose on later attempts. The ghost fades out as you catch up to it (< 60px).
+- ✨ **Golden Breadcrumbs** — optional bonus collectibles hidden in dangerous or hard-to-reach places, announced with floating `+1` / `Perfect!` popups. Grab every crumb for the 100% completion badge on the Victory screen; a lifetime counter is saved too.
 - ⚙️ **Settings menu** — pause anywhere to adjust **SFX volume** (Web Audio master gain) and toggle **screen shake** off for motion-sickness-friendly play.
 - 🧊 **Tunneling-proof physics** — swept AABB collision resolution in sub-tile steps, so nothing falls through the floor — even at terminal velocity or during lag spikes.
-- 👾 **Procedural 8-bit audio** — every jump, flip, pickup, hurt and win is synthesized live with the Web Audio API. No audio files needed.
+- 🎼 **Procedural 8-bit audio** — every jump, flip, pickup, hurt and win is synthesized live with the Web Audio API, plus a looping chiptune soundtrack that **speeds up as you approach your best time**.
 - 🎨 **Procedural pixel art** — all sprites are generated at runtime on `<canvas>`. No image assets to ship.
+- 🖱️ **Custom pixel cursor** — a neon goose pointer replaces the OS cursor in-game, with a pointer variant over clickable UI buttons.
 - 🛠️ **Visual level editor** — a standalone `editor.html` page: paint tiles, validate, export JSON, drop it into the game.
 - 📱 **Responsive arcade cabinet** — the game auto-scales to any viewport while keeping the crisp retro 4:3 aspect ratio.
 - 🚀 **One-click deploy** — push to `main` and a GitHub Actions workflow publishes the game to GitHub Pages automatically.
@@ -46,9 +49,12 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 | Key | Action |
 | :-- | :-- |
 | `A` / `D` or `←` / `→` | Move (acceleration & friction) |
-| `W` / `↑` | Jump — **tap** for a small hop, **hold** for full height |
+| `W` / `↑` / **left-click** | Jump — **tap** for a small hop, **hold** for full height |
+| `SHIFT` | Dash (works in mid-air; brief gravity-off + cooldown) |
 | `SPACE` | Flip gravity (walk on ceilings) |
 | `ESC` | Pause |
+
+**Wall slide & wall jump:** hold into a wall while falling to slide down it slowly, then press Jump to kick off the wall in the opposite direction.
 
 ### Objective
 
@@ -64,6 +70,7 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 
 - The HUD tracks a **per-level timer** (`MM:SS:ms`). It pauses with the game and keeps running if you die — just like a real speedrun.
 - Beat your **Best Time** to hear a little victory fanfare; it is saved per-level and for the whole run.
+- **Ghost replay:** when a run becomes the new best, it is recorded and replayed on your next attempt. Chase the translucent goose — and the music speeds up the closer you get to your record.
 - **Breadcrumbs** (`c`) are the completionist's challenge — they live in spike corridors, on enemy patrol routes and other nasty spots. The HUD shows `CRUMBS n/N`, and the Victory screen shows your overall percentage.
 
 ---
@@ -142,14 +149,15 @@ js/
   main.js                Bootstraps the Game on window load
   Game.js                Core controller: dt game loop, state machine, timers,
                          level select, settings, collision wiring, HUD
-  SaveManager.js         localStorage: unlocked levels, best times, crumbs, settings
-  InputHandler.js        Edge-triggered keyboard input (pressed/released)
+  SaveManager.js         localStorage: unlocked levels, best times, crumbs, settings, ghost replays
+  InputHandler.js        Edge-triggered keyboard + mouse input (pressed/released)
   Physics.js             Swept AABB collision engine (X then Y, sub-tile steps)
   Player.js              Goose controller: acceleration, coyote/buffer/variable jump,
-                         gravity flip (gravity-relative ground checks)
+                         wall slide/wall jump, dash, gravity flip (gravity-relative ground checks)
   LevelManager.js        The 5 levels as 2D string matrices + parsing
   Camera.js              Smooth lerp follow camera with velocity lookahead + snap()
-  SoundManager.js        Procedural 8-bit Web Audio sound effects, master volume
+  SoundManager.js        Procedural 8-bit Web Audio SFX, looping chiptune soundtrack
+                         (tempo ramps near a best time), master volume
   ParticleSystem.js      Spark/dust/feather particles
   SpriteGenerator.js     Procedural pixel-art sprites
   AssetManager.js        Image registry (procedural fallbacks)
@@ -158,6 +166,8 @@ js/
     Enemy.js             Alien frog: patrol, turn-around on walls, gravity
     Item.js              Bread collectible (bobbing animation)
     Crumb.js             Golden breadcrumb bonus collectible (twinkling)
+    Ghost.js             Best-run replay: records + draws translucent ghost (proximity fade)
+assets/                  Custom pixel cursor PNGs (cursor.png, cursor-pointer.png)
 tests/
   physics.test.js        Headless physics suite (Node)
   player.test.js         Headless controller suite (Node)
@@ -187,8 +197,8 @@ npm test
 The `tests/` folder contains three dependency-free Node suites that load the game modules in a sandboxed VM and assert real behavior:
 
 - `physics.test.js` — flush floor/wall/ceiling resolution, no tunneling at terminal velocity, inverted-gravity grounding, bounds.
-- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, no bunny-hopping.
-- `save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, settings, corrupt-storage fallback.
+- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, no bunny-hopping, wall slide/wall jump, dash + cooldown, mouse-click jump parity.
+- `save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, ghost replays, settings, corrupt-storage fallback.
 
 ---
 

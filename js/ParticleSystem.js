@@ -97,6 +97,16 @@ class ParticleSystem {
         }
     }
 
+    emitDash(x, y, dir) {
+        // Cyan speed streak trailing behind the dash
+        for (let i = 0; i < 6; i++) {
+            const vx = (Math.random() - 0.5) * 60 - dir * 130;
+            const vy = (Math.random() - 0.5) * 40;
+            const color = Math.random() > 0.5 ? '#06B6D4' : '#A5F3FC';
+            this.particles.push(new Particle(x, y, vx, vy, color, 3 + Math.random() * 3, 0.3, 'spark'));
+        }
+    }
+
     emitHurt(x, y) {
         // Feather explosion + Red sparks
         for (let i = 0; i < 15; i++) {
