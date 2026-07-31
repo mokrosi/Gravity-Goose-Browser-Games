@@ -75,8 +75,14 @@ class Game {
     }
 
     bindEvents() {
-        document.getElementById('btn-start').addEventListener('click', () => this.startGame());
-        document.getElementById('btn-level-select').addEventListener('click', () => this.goToLevelSelect());
+        document.getElementById('btn-start').addEventListener('click', () => {
+            this.requestImmersiveMode();
+            this.startGame();
+        });
+        document.getElementById('btn-level-select').addEventListener('click', () => {
+            this.requestImmersiveMode();
+            this.goToLevelSelect();
+        });
         document.getElementById('btn-level-select-back').addEventListener('click', () => this.goToStart());
         document.getElementById('btn-start-settings').addEventListener('click', () => this.openSettings('start-screen'));
         document.getElementById('btn-open-settings').addEventListener('click', () => this.openSettings('pause-screen'));
@@ -113,6 +119,15 @@ class Game {
         document.getElementById(id).classList.remove('hidden');
         document.getElementById(id).classList.add('active');
         this.input.clear();
+    }
+
+    requestImmersiveMode() {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(err => console.log('Orientation lock error:', err));
+        }
     }
 
     hideAllScreens() {

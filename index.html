@@ -14,14 +14,17 @@
     <meta property="og:url" content="https://example.com/gravity-goose">
     <meta property="og:title" content="Gravity Goose: The Bread Robbery">
     <meta property="og:description" content="Play as a cyberpunk goose, steal back your sandwich, and defy gravity in this fast-paced retro platformer!">
-    <meta property="og:image" content="assets/images/banner.svg">
+    <meta property="og:image" content="https://mokrosi.github.io/Gravity-Goose-Browser-Games/assets/images/banner.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://example.com/gravity-goose">
     <meta property="twitter:title" content="Gravity Goose: The Bread Robbery">
     <meta property="twitter:description" content="Play as a cyberpunk goose, steal back your sandwich, and defy gravity in this fast-paced retro platformer!">
-    <meta property="twitter:image" content="assets/images/banner.svg">
+    <meta property="twitter:image" content="https://mokrosi.github.io/Gravity-Goose-Browser-Games/assets/images/banner.png">
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
@@ -30,6 +33,12 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <div id="orientation-warning">
+        <div class="orientation-content">
+            <h2 class="title">📱 Rotate Device</h2>
+            <p class="subtitle">Please rotate your device to landscape mode to play.</p>
+        </div>
+    </div>
     <div id="arcade-wrapper">
         <!-- Sleek Arcade Top Header HUD -->
         <div id="arcade-header">
@@ -141,24 +150,24 @@
                 </div>
 
             </div>
-        </div>
 
-        <!-- Neo-Retro touch controls: Glassmorphism buttons + pixel-art icons.
-             Shown only on touch devices while a level is active (Game.touchControls). -->
-        <div id="touch-controls" class="hidden">
-            <button id="btn-touch-pause" class="touch-btn touch-pause" aria-label="Pause"></button>
-            <div class="touch-zone touch-zone-left">
-                <div class="dpad">
-                    <div class="touch-btn touch-btn-inert dpad-up" id="btn-touch-up" aria-hidden="true"></div>
-                    <button class="touch-btn dpad-left" id="btn-touch-left" aria-label="Move left"></button>
-                    <button class="touch-btn dpad-right" id="btn-touch-right" aria-label="Move right"></button>
-                    <div class="touch-btn touch-btn-inert dpad-down" id="btn-touch-down" aria-hidden="true"></div>
+            <!-- Neo-Retro touch controls: Glassmorphism buttons + pixel-art icons.
+                 Shown only on touch devices while a level is active (Game.touchControls). -->
+            <div id="touch-controls" class="hidden">
+                <button id="btn-touch-pause" class="touch-btn touch-pause" aria-label="Pause"></button>
+                <div class="touch-zone touch-zone-left">
+                    <div class="dpad">
+                        <button class="touch-btn touch-btn-inert dpad-up" id="btn-touch-up" aria-hidden="true"></button>
+                        <button class="touch-btn dpad-left" id="btn-touch-left" aria-label="Move left"></button>
+                        <button class="touch-btn dpad-right" id="btn-touch-right" aria-label="Move right"></button>
+                        <button class="touch-btn touch-btn-inert dpad-down" id="btn-touch-down" aria-hidden="true"></button>
+                    </div>
                 </div>
-            </div>
-            <div class="touch-zone touch-zone-right">
-                <button class="touch-btn" id="btn-touch-blink" aria-label="Blink dash"></button>
-                <button class="touch-btn" id="btn-touch-flip" aria-label="Flip gravity"></button>
-                <button class="touch-btn touch-jump" id="btn-touch-jump" aria-label="Jump"></button>
+                <div class="touch-zone touch-zone-right">
+                    <button class="touch-btn" id="btn-touch-blink" aria-label="Blink dash"></button>
+                    <button class="touch-btn" id="btn-touch-flip" aria-label="Flip gravity"></button>
+                    <button class="touch-btn touch-jump" id="btn-touch-jump" aria-label="Jump"></button>
+                </div>
             </div>
         </div>
     </div>
