@@ -61,6 +61,34 @@ class InputHandler {
         this.released = {};
     }
 
+    // Virtual touch input: the on-screen buttons map to standard gameplay codes
+    // (KeyA/KeyD/KeyW/ShiftLeft/Space) so Player.js reads them exactly like
+    // keyboard presses. `down` is true on touchstart (edge-pressed) and false
+    // on touchend/touchcancel (edge-released). Multi-touch works because every
+    // button owns its own listener; a repeated touchstart while already held
+    // must not re-trigger the edge.
+    setTouch(code, down) {
+        if (down) {
+            if (!this.keys[code]) {
+                this.pressed[code] = true;
+            }
+            this.keys[code] = true;
+        } else {
+            if (this.keys[code]) {
+                this.released[code] = true;
+            }
+            this.keys[code] = false;
+        }
+    }
+
+    // Release every key/button at once. Called on screen transitions so a key
+    // held across a pause/menu switch can never get stuck in the down state.
+    clear() {
+        this.keys = {};
+        this.pressed = {};
+        this.released = {};
+    }
+
     isKeyDown(code) {
         return this.keys[code] === true;
     }

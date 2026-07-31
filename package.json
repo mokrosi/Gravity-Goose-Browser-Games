@@ -16,7 +16,7 @@
     "url": "git+https://github.com/YOUR_USERNAME/YOUR_REPO.git"
   },
   "scripts": {
-    "test": "node tests/physics.test.js && node tests/player.test.js && node tests/save.test.js && node tests/levels.test.js"
+    "test": "node tests/physics.test.js && node tests/player.test.js && node tests/save.test.js && node tests/levels.test.js && node tests/input.test.js"
   },
   "engines": {
     "node": ">=16"

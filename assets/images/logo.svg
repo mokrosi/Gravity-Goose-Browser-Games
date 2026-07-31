@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0a051b"/>
+      <stop offset="100%" stop-color="#1f093a"/>
+    </linearGradient>
+    <linearGradient id="sun-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff0077"/>
+      <stop offset="100%" stop-color="#ffb700"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="400" height="400" rx="30" fill="url(#bg-grad)" stroke="#ff0077" stroke-width="4"/>
+
+  <!-- Synthwave Sun -->
+  <circle cx="200" cy="180" r="90" fill="url(#sun-grad)"/>
+  <!-- Sun Stripes -->
+  <rect x="100" y="180" width="200" height="4" fill="#0a051b"/>
+  <rect x="100" y="192" width="200" height="6" fill="#0a051b"/>
+  <rect x="100" y="206" width="200" height="8" fill="#0a051b"/>
+  <rect x="100" y="222" width="200" height="10" fill="#0a051b"/>
+
+  <!-- Retro Horizon Grid -->
+  <path d="M 40 280 L 360 280 M 20 320 L 380 320 M 0 360 L 400 360" stroke="#00f3ff" stroke-width="2" opacity="0.6"/>
+  <path d="M 200 250 L 200 390 M 150 250 L 90 390 M 100 250 L 0 390 M 250 250 L 310 390 M 300 250 L 400 390" stroke="#00f3ff" stroke-width="2" opacity="0.6"/>
+
+  <!-- Gravity Flip Arrows -->
+  <g filter="url(#glow)">
+    <path d="M 80 140 L 105 100 L 130 140 H 115 V 190 H 95 V 140 Z" fill="#00f3ff"/>
+    <path d="M 320 220 L 295 260 L 270 220 H 285 V 170 H 305 V 220 Z" fill="#ff0077"/>
+  </g>
+
+  <!-- Pixel Goose (Centered) -->
+  <g transform="translate(140, 100)" shape-rendering="crispEdges">
+    <!-- White Feather Base -->
+    <path d="
+      M 32,16 H 64 V 80 H 32 Z
+      M 16,32 H 80 V 64 H 16 Z
+      M 0,48 H 96 V 80 H 0 Z
+    " fill="#ffffff"/>
+    
+    <!-- Cyberpunk Visor -->
+    <path d="M 48,24 H 88 V 40 H 48 Z" fill="#00f3ff" filter="url(#glow)"/>
+    <path d="M 56,24 H 64 V 32 H 56 Z" fill="#ffffff"/>
+
+    <!-- Beak holding Sandwich -->
+    <path d="M 72,48 H 112 V 64 H 72 Z" fill="#ff6600"/>
+    <!-- Sandwich / Bread -->
+    <path d="M 88,56 H 120 V 88 H 88 Z" fill="#e6a100"/>
+    <path d="M 96,64 H 112 V 80 H 96 Z" fill="#55aa00"/>
+  </g>
+
+  <!-- Title Text Banner -->
+  <rect x="40" y="325" width="320" height="50" rx="10" fill="#0d0826" stroke="#00f3ff" stroke-width="2"/>
+  <text x="200" y="358" font-family="'Courier New', monospace" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="url(#glow)">GRAVITY GOOSE</text>
+</svg>

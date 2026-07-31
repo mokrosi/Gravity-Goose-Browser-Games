@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64" shape-rendering="crispEdges">
+  <rect width="32" height="32" rx="6" fill="#0d0826"/>
+  <!-- Goose head pixels (white) -->
+  <rect x="8" y="10" width="16" height="14" fill="#ffffff"/>
+  <rect x="10" y="8" width="12" height="18" fill="#ffffff"/>
+  <rect x="6" y="14" width="20" height="8" fill="#ffffff"/>
+  
+  <!-- Cyber Visor / Glasses (Neon Cyan) -->
+  <rect x="14" y="11" width="12" height="4" fill="#00f3ff"/>
+  <rect x="25" y="12" width="2" height="2" fill="#00f3ff"/>
+  <!-- Visor shine -->
+  <rect x="16" y="11" width="3" height="1" fill="#ffffff"/>
+  
+  <!-- Beak (Neon Orange) -->
+  <rect x="20" y="17" width="10" height="5" fill="#ff6600"/>
+  <rect x="22" y="16" width="6" height="1" fill="#ff9900"/>
+  <rect x="22" y="22" width="6" height="1" fill="#cc5500"/>
+  
+  <!-- Gravity arrows -->
+  <path d="M 6 6 L 10 6 L 8 3 Z" fill="#ff0077"/>
+  <path d="M 6 26 L 10 26 L 8 29 Z" fill="#00f3ff"/>
+</svg>

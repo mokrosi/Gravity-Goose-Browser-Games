@@ -5,6 +5,14 @@ class Game {
         
         this.assetManager = new AssetManager();
         this.input = new InputHandler();
+        this.touchControls = new TouchControls(this.input);
+        // Touch escape-hatch: the on-screen pause button mirrors the ESC key.
+        this.touchControls.onPause = () => {
+            if (this.state === 'PLAYING') this.pauseGame();
+        };
+        if (TouchControls.isTouchDevice()) {
+            document.body.classList.add('touch-device');
+        }
         this.camera = new Camera(this.canvas.width, this.canvas.height);
         this.levelManager = new LevelManager();
         this.soundManager = new SoundManager();
@@ -104,11 +112,13 @@ class Game {
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
         document.getElementById(id).classList.add('active');
+        this.input.clear();
     }
 
     hideAllScreens() {
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        this.input.clear();
     }
 
     startGame() {
@@ -120,6 +130,7 @@ class Game {
         this.levelManager.theme = 'retro';
         this.showScreen('start-screen');
         document.getElementById('hud').classList.add('hidden');
+        this.touchControls.hide();
     }
 
     goToLevelSelect() {
@@ -129,6 +140,7 @@ class Game {
         this.state = 'LEVEL_SELECT';
         this.showScreen('level-select-screen');
         document.getElementById('hud').classList.add('hidden');
+        this.touchControls.hide();
     }
 
     renderLevelSelect() {
@@ -197,6 +209,7 @@ class Game {
             this.state = 'PLAYING';
             this.hideAllScreens();
             document.getElementById('hud').classList.remove('hidden');
+            this.touchControls.show();
             this.levelTimer = 0;
             this.crumbCollected = 0;
             this.crumbTotal = this.levelManager.crumbs.length;
@@ -234,18 +247,21 @@ class Game {
 
         this.showScreen('victory-screen');
         document.getElementById('hud').classList.add('hidden');
+        this.touchControls.hide();
     }
 
     pauseGame() {
         this.state = 'PAUSED';
         this.soundManager.stopMusic();
         this.showScreen('pause-screen');
+        this.touchControls.hide();
     }
 
     resumeGame() {
         this.state = 'PLAYING';
         this.soundManager.startMusic();
         this.hideAllScreens();
+        this.touchControls.show();
     }
 
     quitToMenu() {
@@ -254,6 +270,7 @@ class Game {
         this.levelManager.theme = 'retro';
         this.showScreen('start-screen');
         document.getElementById('hud').classList.add('hidden');
+        this.touchControls.hide();
     }
 
     nextLevel() {
@@ -482,6 +499,7 @@ class Game {
                 this.soundManager.stopMusic();
                 this.showScreen('game-over-screen');
                 document.getElementById('hud').classList.add('hidden');
+                this.touchControls.hide();
             } else {
                 // Instant respawn: reset position, level timer and breadcrumbs.
                 this.player = this.createPlayer();
@@ -624,6 +642,7 @@ class Game {
 
             this.soundManager.stopMusic();
             this.showScreen('level-complete-screen');
+            this.touchControls.hide();
         }
 
         this.camera.follow(this.player, this.levelManager.width * this.levelManager.tileSize, this.levelManager.height * this.levelManager.tileSize);
