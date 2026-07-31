@@ -19,6 +19,13 @@ class LevelManager {
         this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10) or 'cyberpunk' (11-15)
         this.playerStart = { x: 50, y: 50 };
 
+        // Target par times in seconds for 15 levels (indices 0 to 14)
+        this.parTimes = [
+            12.0, 15.0, 18.0, 20.0, 22.0,
+            25.0, 25.0, 28.0, 30.0, 32.0,
+            35.0, 38.0, 40.0, 42.0, 45.0
+        ];
+
         // Moving-laser spawns per level (index -> config list). Lasers are
         // dynamic entities, not tile characters. `axis` is the movement axis
         // ('x' sweeps the beam sideways, 'y' sweeps it up/down); `min`/`max`

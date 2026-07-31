@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
     <!-- Primary Meta Tags -->
     <title>Gravity Goose: The Bread Robbery</title>
@@ -32,7 +32,9 @@
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
     <link rel="icon" type="image/svg+xml" sizes="32x32" href="assets/images/logo.svg">
     <link rel="icon" type="image/svg+xml" sizes="16x16" href="assets/images/logo.svg">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/logo.svg">
+    <!-- PWA Manifest & Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
 
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -69,6 +71,12 @@
 
             <!-- Instant-respawn glitch flash overlay -->
             <div id="flash-overlay"></div>
+            
+            <!-- Mechanic Intro Toast Banner -->
+            <div id="mechanic-toast" class="hidden"></div>
+            
+            <!-- Contextual Control Hint Popup -->
+            <div id="control-hint" class="hidden"></div>
             
             <!-- Glassmorphism UI Overlay Layer -->
             <div id="ui-layer">
@@ -133,6 +141,7 @@
                     <p class="subtitle">Bread Recovered: <span id="level-bread-score" class="highlight">0</span></p>
                     <p class="subtitle">Breadcrumbs: <span id="level-crumb-score" class="highlight">0/0</span></p>
                     <p class="subtitle">Level Time: <span id="level-time" class="highlight">00:00:000</span></p>
+                    <p class="subtitle"><span id="level-medal" class="highlight"></span></p>
                     <p class="subtitle"><span id="level-best" class="highlight"></span></p>
                     <button id="btn-next-level" class="btn">NEXT LEVEL</button>
                 </div>
@@ -194,6 +203,8 @@
     <script src="js/TouchControls.js"></script>
     <script src="js/LevelManager.js"></script>
     <script src="js/Camera.js"></script>
+    <script src="js/MechanicToasts.js"></script>
+    <script src="js/HintSystem.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/main.js"></script>
 </body>

@@ -17,6 +17,8 @@ class Game {
         this.levelManager = new LevelManager();
         this.soundManager = new SoundManager();
         this.particleSystem = new ParticleSystem();
+        this.mechanicToasts = new MechanicToasts(this);
+        this.hintSystem = new HintSystem(this);
 
         this.player = null;
         
@@ -169,8 +171,10 @@ class Game {
             const chapterClass = i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : '');
             btn.className = 'level-btn' + chapterClass + (unlocked ? '' : ' locked');
             btn.disabled = !unlocked;
+            const medal = unlocked ? this.save.getMedalGlyph(i, this.levelManager) : '';
             btn.innerHTML =
                 `<span class="level-num">${i + 1}</span>` +
+                `<span class="level-medal">${medal}</span>` +
                 `<span class="level-best">${unlocked ? (best !== null ? this.formatTime(best) : '—') : '🔒'}</span>`;
             if (unlocked) {
                 btn.addEventListener('click', () => this.startLevel(i));
@@ -230,6 +234,8 @@ class Game {
             this.crumbTotal = this.levelManager.crumbs.length;
             this.totalCrumbs += this.crumbTotal;
             this.updateHUD();
+            this.mechanicToasts.checkAndShow(this.currentLevel);
+            this.hintSystem.resetForLevel();
         } else {
             // No more levels: the run is over.
             this.showVictory();
@@ -448,6 +454,7 @@ class Game {
         }
 
         this.player.update(dt, this.input, this.levelManager, this.soundManager, this.particleSystem);
+        this.hintSystem.update(dt);
 
         this.ghost.sample(this.levelTimer, this.player);
         this.particleSystem.update(dt);
@@ -654,6 +661,12 @@ class Game {
             }
             // Completing a level unlocks the next one in the level select.
             this.save.unlockLevel(this.currentLevel + 1);
+
+            const medalEl = document.getElementById('level-medal');
+            if (medalEl) {
+                const medalGlyph = this.save.getMedalGlyph(this.currentLevel, this.levelManager);
+                medalEl.innerText = medalGlyph ? `Medal Earned: ${medalGlyph}` : '';
+            }
 
             this.soundManager.stopMusic();
             this.showScreen('level-complete-screen');

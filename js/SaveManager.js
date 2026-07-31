@@ -20,6 +20,8 @@ class SaveManager {
             bestTotal: null,      // seconds, or null if no run finished yet
             totalCrumbs: 0,       // lifetime golden breadcrumbs collected
             ghosts: {},           // { [levelIndex]: [{t,x,y}, ...] } best-run replays
+            seenMechanicToasts: [],
+            hintsShown: { move: false, jumpHold: false, blink: false, flip: false },
             settings: {
                 sfxVolume: 0.8,   // 0..1 master volume
                 screenShake: true // accessibility: disable motion-heavy shake
@@ -80,6 +82,22 @@ class SaveManager {
         return false;
     }
 
+    getMedal(index, parTime) {
+        const best = this.getBestTime(index);
+        if (best === null || !parTime) return null;
+        if (best <= parTime) return 'gold';
+        if (best <= parTime * 1.5) return 'silver';
+        if (best <= parTime * 2.2) return 'bronze';
+        return null;
+    }
+
+    getMedalGlyph(index, levelManager) {
+        if (!levelManager || !levelManager.parTimes) return '';
+        const parTime = levelManager.parTimes[index];
+        const tier = this.getMedal(index, parTime);
+        return { gold: '🥇', silver: '🥈', bronze: '🥉' }[tier] || '';
+    }
+
     getBestTotal() {
         return this.data.bestTotal;
     }
@@ -133,6 +151,34 @@ class SaveManager {
 
     setScreenShake(enabled) {
         this.data.settings.screenShake = !!enabled;
+        this.save();
+    }
+
+    // --- Mechanic Toasts ---------------------------------------------------
+
+    hasSeenMechanicToast(levelIndex) {
+        if (!this.data.seenMechanicToasts) this.data.seenMechanicToasts = [];
+        return this.data.seenMechanicToasts.indexOf(levelIndex) !== -1;
+    }
+
+    markMechanicToastSeen(levelIndex) {
+        if (!this.data.seenMechanicToasts) this.data.seenMechanicToasts = [];
+        if (this.data.seenMechanicToasts.indexOf(levelIndex) === -1) {
+            this.data.seenMechanicToasts.push(levelIndex);
+            this.save();
+        }
+    }
+
+    // --- Hints ------------------------------------------------------------
+
+    hasSeenHint(key) {
+        if (!this.data.hintsShown) this.data.hintsShown = {};
+        return !!this.data.hintsShown[key];
+    }
+
+    markHintSeen(key) {
+        if (!this.data.hintsShown) this.data.hintsShown = {};
+        this.data.hintsShown[key] = true;
         this.save();
     }
 

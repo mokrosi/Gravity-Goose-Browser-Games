@@ -143,11 +143,16 @@ class TouchControls {
         }
     }
 
-    _vibrate() {
+    _vibrate(btn) {
         try {
             if (navigator.vibrate) navigator.vibrate(15);
         } catch (e) {
             // Haptics unavailable (e.g. iOS Safari) — nothing to do.
+        }
+        if (btn) {
+            btn.classList.remove('haptic-pulse');
+            void btn.offsetWidth;
+            btn.classList.add('haptic-pulse');
         }
     }
 
@@ -167,7 +172,7 @@ class TouchControls {
                     this.input.setTouch(code, true);
                 }
                 btn.classList.add('pressed');
-                this._vibrate();
+                this._vibrate(btn);
             };
             const release = (e) => {
                 e.preventDefault();
@@ -203,7 +208,7 @@ class TouchControls {
             this.canvasTouches++;
             if (this.canvasTouches === 1) {
                 this.input.setTouch('Mouse0', true);
-                this._vibrate();
+                this._vibrate(document.getElementById('btn-touch-flip'));
             }
         }, { passive: false });
         canvas.addEventListener('touchend', (e) => {
