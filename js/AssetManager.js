@@ -9,8 +9,11 @@ class AssetManager {
         this.images['bread'] = SpriteGenerator.generateBreadSprite();
         this.images['crumb'] = SpriteGenerator.generateCrumbSprite();
         this.images['enemy_frog'] = SpriteGenerator.generateFrogSprite();
-        this.images['tileset'] = SpriteGenerator.generateTileSprite();
-        this.images['spikes'] = SpriteGenerator.generateSpikeSprite();
+        this.images['tileset'] = SpriteGenerator.generateTileSprite('retro');
+        this.images['spikes'] = SpriteGenerator.generateSpikeSprite('retro');
+        // Sunset palette for Levels 6-10
+        this.images['tileset_sunset'] = SpriteGenerator.generateTileSprite('sunset');
+        this.images['spikes_sunset'] = SpriteGenerator.generateSpikeSprite('sunset');
     }
 
     loadImage(key, src) {

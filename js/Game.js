@@ -41,6 +41,8 @@ class Game {
         // Cached HUD element updated every frame
         this.hudTimeEl = document.getElementById('hud-time');
         this.hudDashEl = document.getElementById('hud-dash');
+        this.hudFlipItemEl = document.getElementById('hud-flip-item');
+        this.hudFlipFillEl = document.getElementById('hud-flip-fill');
 
         // Parallax stars
         this.stars = [];
@@ -108,12 +110,14 @@ class Game {
 
     goToStart() {
         this.state = 'START';
+        this.levelManager.theme = 'retro';
         this.showScreen('start-screen');
         document.getElementById('hud').classList.add('hidden');
     }
 
     goToLevelSelect() {
         this.soundManager.init();
+        this.levelManager.theme = 'retro';
         this.renderLevelSelect();
         this.state = 'LEVEL_SELECT';
         this.showScreen('level-select-screen');
@@ -128,7 +132,8 @@ class Game {
             const unlocked = this.save.isLevelUnlocked(i);
             const best = this.save.getBestTime(i);
             const btn = document.createElement('button');
-            btn.className = 'level-btn' + (unlocked ? '' : ' locked');
+            const sunsetClass = i >= 5 ? ' sunset' : '';
+            btn.className = 'level-btn' + sunsetClass + (unlocked ? '' : ' locked');
             btn.disabled = !unlocked;
             btn.innerHTML =
                 `<span class="level-num">${i + 1}</span>` +
@@ -165,9 +170,16 @@ class Game {
         this.startLevel(this.currentLevel);
     }
 
+    // Builds the player configured for the current level's difficulty rules.
+    createPlayer() {
+        const p = new Player(this.levelManager.playerStart.x, this.levelManager.playerStart.y);
+        p.setFlipLimit(this.levelManager.flipLimit);
+        return p;
+    }
+
     loadLevel() {
         if (this.levelManager.loadLevel(this.currentLevel)) {
-            this.player = new Player(this.levelManager.playerStart.x, this.levelManager.playerStart.y);
+            this.player = this.createPlayer();
             this.camera.snap(
                 this.player,
                 this.levelManager.width * this.levelManager.tileSize,
@@ -224,6 +236,7 @@ class Game {
     quitToMenu() {
         this.state = 'START';
         this.soundManager.stopMusic();
+        this.levelManager.theme = 'retro';
         this.showScreen('start-screen');
         document.getElementById('hud').classList.add('hidden');
     }
@@ -302,6 +315,15 @@ class Game {
         el.addEventListener('animationend', () => el.remove());
     }
 
+    // Quick CSS glitch/flash over the canvas (used on instant respawn).
+    flashScreen() {
+        const overlay = document.getElementById('flash-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('reset');
+        void overlay.offsetWidth; // restart the animation on rapid deaths
+        overlay.classList.add('reset');
+    }
+
     start() {
         this.assetManager.isDone().then(() => {
             this.lastTime = performance.now();
@@ -312,16 +334,24 @@ class Game {
     update(dt) {
         if (this.state !== 'PLAYING') return;
 
-        // Speedrun timer (keeps running through deaths, freezes on pause/level end)
+        // Speedrun timer (resets to 0 on instant respawn, freezes on pause/level end)
         this.levelTimer += dt;
         this.totalTimer += dt;
         if (this.hudTimeEl) {
             this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
         }
         if (this.hudDashEl) {
-            this.hudDashEl.innerText = this.player.canDash
+            this.hudDashEl.innerText = this.player.canBlink
                 ? 'READY'
-                : this.player.dashCooldown.toFixed(1);
+                : this.player.blinkCooldown.toFixed(1);
+        }
+
+        // Gravity-flip stamina bar: only meaningful in Levels 6-10 (flip limit).
+        if (this.hudFlipItemEl) {
+            this.hudFlipItemEl.classList.toggle('hidden', !this.levelManager.flipLimit);
+        }
+        if (this.hudFlipFillEl) {
+            this.hudFlipFillEl.classList.toggle('empty', !this.player.canFlip);
         }
 
         // Background music speeds up while the player closes in on their best time
@@ -335,6 +365,7 @@ class Game {
         }
 
         this.player.update(dt, this.input, this.levelManager, this.soundManager, this.particleSystem);
+
         this.ghost.sample(this.levelTimer, this.player);
         this.particleSystem.update(dt);
 
@@ -346,19 +377,24 @@ class Game {
             this.particleSystem.emitFootstep(this.player.x + this.player.width / 2, footY);
         }
 
-        // Check Spike Hazard collisions
-        for (let hazard of this.levelManager.hazards) {
-            if (Physics.checkCollision(this.player, hazard)) {
-                this.player.isDead = true;
+        // Check Spike Hazard collisions (forgiving 15%-shrunk hitboxes; blink i-frames protect)
+        if (!this.player.isInvincible) {
+            for (let hazard of this.levelManager.hazards) {
+                const hb = Physics.shrink(hazard, Physics.HAZARD_INSET);
+                if (Physics.checkCollision(this.player, hb)) {
+                    this.player.isDead = true;
+                }
             }
         }
 
-        // Check death
+        // Check death / instant respawn (no page reload, no game-over delay)
         if (this.player.isDead) {
             this.soundManager.playHurt();
+            this.soundManager.playReset();
             this.particleSystem.emitHurt(this.player.x + 14, this.player.y + 14);
             this.lives--;
             this.screenShake();
+            this.flashScreen();
             this.updateHUD();
 
             if (this.lives <= 0) {
@@ -367,13 +403,21 @@ class Game {
                 this.showScreen('game-over-screen');
                 document.getElementById('hud').classList.add('hidden');
             } else {
-                // Respawn
-                this.player = new Player(this.levelManager.playerStart.x, this.levelManager.playerStart.y);
+                // Instant respawn: reset position, level timer and breadcrumbs.
+                this.player = this.createPlayer();
                 this.camera.snap(
                     this.player,
                     this.levelManager.width * this.levelManager.tileSize,
                     this.levelManager.height * this.levelManager.tileSize
                 );
+                this.levelTimer = 0;
+                if (this.hudTimeEl) {
+                    this.hudTimeEl.innerText = this.formatTime(this.levelTimer);
+                }
+                this.levelManager.resetCrumbs();
+                this.totalCrumbCollected -= this.crumbCollected;
+                this.crumbCollected = 0;
+                this.ghost.startRecording(); // keep the replay in sync with the reset timer
             }
             return;
         }
@@ -381,10 +425,13 @@ class Game {
         // Update enemies
         for (let enemy of this.levelManager.entities) {
             enemy.update(dt, this.levelManager);
-            
-            // Check collision with player
-            if (!enemy.isDead && Physics.checkCollision(this.player, enemy)) {
-                this.player.isDead = true;
+
+            // Check collision with player (forgiving hitbox; blink i-frames protect)
+            if (!enemy.isDead && !this.player.isInvincible) {
+                const hb = Physics.shrink(enemy, Physics.HAZARD_INSET);
+                if (Physics.checkCollision(this.player, hb)) {
+                    this.player.isDead = true;
+                }
             }
         }
 
@@ -415,6 +462,7 @@ class Game {
                 this.save.addCrumb();
                 this.soundManager.playCrumb();
                 this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
+                this.player.rechargeFlip(); // golden breadcrumb recharges the flip
                 const perfect = this.crumbCollected === this.crumbTotal;
                 this.spawnFloatText(
                     perfect ? 'Perfect!' : '+1',
@@ -458,12 +506,18 @@ class Game {
     }
 
     drawParallaxBackground() {
-        // Deep Space Background with Parallax Starfield & Synth Grid
-        this.ctx.fillStyle = '#0f172a';
+        // Deep Space Background with Parallax Starfield & Synth Grid.
+        // Levels 6-10 shift the whole backdrop to a sunset/amber palette.
+        const sunset = this.levelManager.theme === 'sunset';
+        const bg = sunset ? '#2b1004' : '#0f172a';
+        const starColor = sunset ? '#fed7aa' : '#ffffff';
+        const gridColor = sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)';
+
+        this.ctx.fillStyle = bg;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw Parallax Stars
-        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillStyle = starColor;
         for (let star of this.stars) {
             let px = (star.x - this.camera.x * star.speed) % this.canvas.width;
             let py = (star.y - this.camera.y * star.speed) % this.canvas.height;
@@ -476,7 +530,7 @@ class Game {
         this.ctx.globalAlpha = 1.0;
 
         // Distant Grid Lines (Retro Synthwave Horizon feel)
-        this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+        this.ctx.strokeStyle = gridColor;
         this.ctx.lineWidth = 1;
         const gridSize = 40;
         const offsetX = -(this.camera.x * 0.3) % gridSize;

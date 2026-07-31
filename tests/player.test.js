@@ -36,6 +36,7 @@ class Level {
         this.rows = rows.map((r) => r.split(''));
         this.width = this.rows[0].length;
         this.height = this.rows.length;
+        this.gravityZones = [];
     }
     isSolid(col, row) {
         if (col < 0 || col >= this.width || row < 0 || row >= this.height) return false;
@@ -75,11 +76,11 @@ class KeyInput {
 const noInput = { isKeyDown: () => false, isKeyPressed: () => false, isKeyReleased: () => false, beginFrame: () => {} };
 const soundStub = {
     playJump() {}, playFlip() {}, playCrumb() {}, playBest() {},
-    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playDash() {},
+    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playBlink() {}, playReset() {},
 };
 const particleStub = {
     emitGravityFlip() {}, emitFootstep() {}, emitCrumbCollect() {},
-    emitBreadCollect() {}, emitHurt() {}, emitDash() {},
+    emitBreadCollect() {}, emitHurt() {}, emitBlink() {},
 };
 
 function run(p, frames, input, level) {
@@ -388,41 +389,113 @@ console.log('--- Player controller tests ---');
     assert(p.wallSliding === false, 'wall jump ends the slide');
 }
 
-// 16. Dash: Shift bursts horizontally and disables gravity for its window
+// 16. Blink: Shift teleports 3 tiles forward, grants i-frames + an afterimage trail
 {
     const p = new Player(2 * T, 5 * T);
+    run(p, 30, noInput, flat);
+    const xBefore = p.x;
     const input = new KeyInput();
-    input.press('KeyD');
-    run(p, 10, input, flat);
     input.press('ShiftLeft');
     p.update(1 / 60, input, flat, soundStub, particleStub);
     input.beginFrame();
-    assert(p.vx === Player.DASH_SPEED, 'dash sets horizontal velocity');
-    assert(p.vy === 0, 'dash zeroes vertical velocity');
-    run(p, 8, input, flat);
-    assert(p.dashTimer > 0, 'dash stays active for its window');
-    assert(p.vy === 0, 'gravity is disabled while dashing');
-    assert(p.dashCooldown > 0, 'dash enters cooldown');
+    assert(p.x === xBefore + Player.BLINK_DISTANCE, 'blink teleports exactly 3 tiles forward');
+    assert(p.isInvincible === true, 'blink grants invincibility frames');
+    assert(p.blinkCooldown > 0, 'blink enters cooldown');
+    assert(p.afterimages.length > 0, 'blink spawns an afterimage trail');
 }
 
-// 17. Dash cooldown: a second press is ignored until the cooldown expires
+// 17. Blink cooldown: a second press is ignored until the cooldown expires
 {
     const p = new Player(2 * T, 5 * T);
+    run(p, 30, noInput, flat);
     const input = new KeyInput();
-    input.press('KeyD');
-    run(p, 10, input, flat);
     input.press('ShiftLeft');
     p.update(1 / 60, input, flat, soundStub, particleStub);
     input.beginFrame();
-    const timerAfterFirst = p.dashTimer;
+    const xAfterFirst = p.x;
     input.press('ShiftLeft');
     p.update(1 / 60, input, flat, soundStub, particleStub);
     input.beginFrame();
-    assert(p.dashTimer < timerAfterFirst, 'second dash is ignored during cooldown');
-    assert(p.vx === Player.DASH_SPEED, 'dash velocity not re-applied during cooldown');
+    assert(p.x === xAfterFirst, 'second blink is ignored during cooldown');
+    assert(p.isInvincible === true, 'i-frames still active right after the first blink');
 }
 
-// 18. Mouse/keyboard parity: left click jumps exactly like the jump key
+// 18. Blink i-frames decay: the goose becomes vulnerable again afterwards
+{
+    const p = new Player(2 * T, 5 * T);
+    run(p, 30, noInput, flat);
+    const input = new KeyInput();
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.isInvincible === true, 'invincible right after blinking');
+    run(p, Math.ceil(Player.INVINCIBLE_TIME / (1 / 60)) + 5, input, flat);
+    assert(p.isInvincible === false, 'i-frames expire after the blink window');
+    assert(p.afterimages.length === 0, 'afterimages have fully faded');
+}
+
+// 19. Blink passes through a one-tile-thin wall
+{
+    const thinWall = new Level([
+        '################',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#....#.........#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '################',
+    ]);
+    const p = new Player(2 * T, 5 * T);
+    const input = new KeyInput();
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, thinWall, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.x === 6 * T, 'blink leaps fully past a thin wall');
+    assert(p.x >= 6 * T, 'player body completely clears the thin wall');
+}
+
+// 20. Blink stops flush against a wall two tiles thick
+{
+    const thickWall = new Level([
+        '################',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#....##........#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '#..............#',
+        '################',
+    ]);
+    const p = new Player(2 * T, 5 * T);
+    const input = new KeyInput();
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, thickWall, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.x + p.width <= 5 * T, 'blink cannot pass a thick wall');
+    assert(p.x === 5 * T - p.width, 'blink stops flush against the thick wall');
+}
+
+// 21. Blink cannot escape through the level border wall
+{
+    const p = new Player(12 * T, 5 * T);
+    const input = new KeyInput();
+    input.press('ShiftLeft');
+    p.update(1 / 60, input, tallCorridor, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.x + p.width <= 15 * T, 'blink never crosses the solid right border');
+    assert(p.x + p.width > 14 * T, 'blink pushed toward the border');
+}
+
+// 18. Mouse/keyboard parity: left click flips gravity exactly like SPACE
 {
     const p = new Player(2 * T, 10 * T);
     run(p, 30, noInput, flat);
@@ -430,11 +503,118 @@ console.log('--- Player controller tests ---');
     input.press('Mouse0');
     p.update(1 / 60, input, flat, soundStub, particleStub);
     input.beginFrame();
-    assert(p.vy < 0, 'left click launches a jump');
-    input.release('Mouse0');
+    assert(p.gravity < 0, 'left click flips gravity');
+}
+
+// 19. Flip is once per airtime: a mid-air press is ignored, landing recharges it
+{
+    const p = new Player(2 * T, 10 * T);
+    run(p, 30, noInput, flat);
+    const input = new KeyInput();
+    input.press('Space');
     p.update(1 / 60, input, flat, soundStub, particleStub);
     input.beginFrame();
-    assert(p.vy < 0 && p.vy > -400, 'releasing the click cuts the jump like releasing W');
+    assert(p.gravity < 0, 'first flip works');
+    input.release('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    run(p, 20, input, flat);
+    assert(p.onGround === false, 'still airborne when the second press arrives');
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity < 0, 'second mid-air flip is ignored');
+    input.release('Space');
+    run(p, 120, input, flat);
+    assert(p.onGround === true, 'resting on the ceiling recharges the flip');
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity > 0, 'flip recharges after landing');
+}
+
+// 20. Without the flip limit (Levels 1-5), flipping mid-air is unrestricted
+{
+    const p = new Player(2 * T, 10 * T);
+    p.setFlipLimit(false);
+    run(p, 30, noInput, flat);
+    const input = new KeyInput();
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity < 0, 'first flip works');
+    input.release('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    run(p, 20, input, flat);
+    assert(p.onGround === false, 'still airborne for a second flip');
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity > 0, 'second mid-air flip allowed without the limit');
+}
+
+// 21. Forced-gravity zone: snaps inverted gravity back to normal
+{
+    const p = new Player(2 * T, 5 * T);
+    run(p, 30, noInput, flat);
+    p.gravity = -1400; // goose is inverted, mid-air
+    flat.gravityZones = [{ x: 0, y: 0, width: 400, height: 400 }];
+    p.update(1 / 60, noInput, flat, soundStub, particleStub);
+    assert(p.gravity > 0, 'zone forces gravity back to normal');
+    assert(p.inGravityZone === true, 'inGravityZone flag is set inside the zone');
+}
+
+// 22. Forced-gravity zone: flipping is completely locked while inside
+{
+    const p = new Player(2 * T, 10 * T);
+    run(p, 30, noInput, flat);
+    flat.gravityZones = [{ x: 0, y: 0, width: 400, height: 400 }];
+    const input = new KeyInput();
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity > 0, 'flip press inside the zone is ignored');
+    assert(p.flipBufferTimer === 0, 'flip buffer is cleared inside the zone');
+}
+
+// 23. Golden Breadcrumb recharges the mid-air flip (Level 6+ rule)
+{
+    flat.gravityZones = []; // ensure no zone leak from earlier tests
+    const p = new Player(2 * T, 10 * T);
+    run(p, 30, noInput, flat);
+    const input = new KeyInput();
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity < 0, 'first flip works');
+    input.release('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    run(p, 20, input, flat);
+    assert(p.onGround === false, 'still airborne');
+    assert(p.canFlip === false, 'flip spent while airborne');
+    p.rechargeFlip();
+    assert(p.canFlip === true, 'crumb recharge restores the flip mid-air');
+    input.press('Space');
+    p.update(1 / 60, input, flat, soundStub, particleStub);
+    input.beginFrame();
+    assert(p.gravity > 0, 'can flip again after the crumb recharge');
+}
+
+// 24. Leaving a zone re-enables flipping with normal gravity
+{
+    const p = new Player(2 * T, 5 * T);
+    run(p, 30, noInput, flat);
+    p.gravity = -1400;
+    flat.gravityZones = [{ x: 0, y: 0, width: 400, height: 400 }];
+    p.update(1 / 60, noInput, flat, soundStub, particleStub);
+    assert(p.gravity > 0, 'zone forces gravity normal');
+    assert(p.canFlip === false, 'flip locked while inside the zone');
+    flat.gravityZones = [];
+    p.update(1 / 60, noInput, flat, soundStub, particleStub);
+    assert(p.inGravityZone === false, 'left the zone');
+    assert(p.canFlip === true, 'flip re-enabled outside the zone');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

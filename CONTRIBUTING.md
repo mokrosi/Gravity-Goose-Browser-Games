@@ -31,7 +31,7 @@ Thanks for wanting to contribute! This is a small, dependency-free vanilla JS ga
    npm test
    ```
 
-   You should see three suites pass (`physics.test.js`, `player.test.js` and `save.test.js`).
+   You should see four suites pass (`physics.test.js`, `player.test.js`, `save.test.js` and `levels.test.js`).
 
 4. Make your change, re-run `npm test`, and manually play-test per the [QA checklist](#manual-qa-checklist) below.
 
@@ -51,10 +51,11 @@ js/
   InputHandler.js        Edge-triggered keyboard input (pressed/released)
   Physics.js             Swept AABB collision engine (X then Y, sub-tile steps)
   Player.js              Goose controller: acceleration, coyote/buffer/variable jump,
-                         gravity flip (gravity-relative ground checks)
-  LevelManager.js        The 5 levels as 2D string matrices + parsing
+                         wall slide/wall jump, blink teleport, gravity flip (gravity-relative ground checks)
+  LevelManager.js        The 10 levels (5 retro + 5 sunset) as 2D string matrices,
+                         parsing, gravity zones, theme + flip-limit per chapter
   Camera.js              Smooth lerp follow camera with velocity lookahead + snap()
-  SoundManager.js        Procedural 8-bit Web Audio SFX, master volume
+  SoundManager.js        Procedural 8-bit Web Audio SFX, looping chiptune, master volume
   ParticleSystem.js      Spark/dust/feather particles
   SpriteGenerator.js     Procedural pixel-art sprites
   AssetManager.js        Image registry (procedural fallbacks)
@@ -63,7 +64,8 @@ js/
     Enemy.js             Alien frog: patrol, turn-around on walls, gravity
     Item.js              Bread collectible (bobbing animation)
     Crumb.js             Golden breadcrumb bonus collectible (twinkling)
-tests/                   Headless Node test suites (physics, player, save)
+    Ghost.js             Best-run replay: records + draws translucent ghost (proximity fade)
+tests/                   Headless Node test suites (physics, player, save, levels)
 .github/workflows/       CI: test + deploy to GitHub Pages
 ```
 
@@ -109,7 +111,7 @@ The fastest way to design a level is the in-repo visual editor — no hand-count
    ```
 
 2. **Start from something**: use the `SOURCE` dropdown to load an existing level, or pick `New blank level` and press `FILL BORDERS` to get a solid frame to draw inside.
-3. **Paint** with the brush palette: `·` air, `#` solid, `▲` spike, `P` spawn, `🍞` bread, `★` crumb, `🐸` frog. Click to place, **drag** to paint a line, **right-click** to erase.
+3. **Paint** with the brush palette: `·` air, `#` solid, `▲` spike, `P` spawn, `🍞` bread, `★` crumb, `🐸` frog, `◉` gravity zone. Click to place, **drag** to paint a line, **right-click** to erase.
 4. **Resize** the grid with the `SIZE` inputs if you want a wider/taller arena (existing tiles are preserved).
 5. **VALIDATE** to catch structural mistakes (row widths, missing spawn/bread, open borders).
 6. **EXPORT JSON**, then **COPY**, and paste the array into `js/LevelManager.js` → `this.levels` (see the tutorial below).
@@ -133,8 +135,9 @@ Each character in a row maps to exactly one 32×32 tile:
 | `^` | Spike hazard | Kills the goose on contact — place deliberately! |
 | `P` | Player spawn point | **Exactly one per level** |
 | `B` | Bread item | **You need at least one** — collecting *all* bread ends the level |
-| `c` | Golden breadcrumb | Optional bonus collectible for 100% completion |
+| `c` | Golden breadcrumb | Optional bonus collectible for 100% completion; on Levels 6–10 it also recharges a spent gravity flip |
 | `E` | Alien frog enemy | Patrols back and forth, turns around at walls |
+| `z` | Gravity zone | **Not solid.** Forces gravity back to normal and locks the flip while the goose is inside. Non-player entities ignore it. Only meaningful on Levels 6–10 |
 | ` ` (space) | Empty air | |
 
 ### The rules
@@ -145,6 +148,8 @@ Each character in a row maps to exactly one 32×32 tile:
 4. **Place at least one `B`** so the level can be completed.
 5. **Mind the reachability.** The goose jumps ~4 tiles high and ~7 tiles far (that's a deliberate, generous jump arc). Enemies and spikes on the other hand are always deadly.
 6. **Breadcrumbs are optional.** `c` should be risky-but-possible: in a spike corridor, on a high ledge that requires a gravity flip, or on an enemy patrol route. If a crumb is *impossible* to reach, that's a bug — always play-test.
+7. **Chapter rules are automatic.** The first 5 levels in `this.levels` are the *retro* chapter; index 5 and beyond are the *sunset* chapter — they get the dusk palette, **once-per-airtime gravity flips** (see `LevelManager.flipLimit`) and need gravity-zone routing. `z` tiles only make sense there.
+8. **Gravity zones** (`z`) force the goose back to normal gravity and suppress flipping while inside. Build corridors that *force* the player to stay on the floor — walls of `z`, or a `z` floor under a ceiling-height path.
 
 ### Step-by-step: add a brand-new level
 
@@ -158,10 +163,10 @@ this.levels = [
 ];
 ```
 
-Add a new array **before the closing `];`**. For example, a tiny "Spike Gauntlet" level (12 tiles wide × 9 tiles tall):
+Add a new array **before the closing `];`**. For example, a tiny "Spike Gauntlet" level (12 tiles wide × 9 tiles tall) — drop it in as a brand-new **11th** level:
 
 ```js
-// Level 6: The Spike Gauntlet
+// Level 11: The Spike Gauntlet
 [
     "############",      // solid ceiling
     "#       ^  #",      // a ceiling spike
@@ -204,8 +209,9 @@ npm test
 The suites are plain Node scripts with zero dependencies. They load the relevant modules from `js/` with `vm.runInThisContext` (no DOM needed) and assert real behavior:
 
 - `tests/physics.test.js` — floor/wall/ceiling resolution is flush, no tunneling at terminal velocity, inverted-gravity grounding, world bounds.
-- `tests/player.test.js` — acceleration to max speed, friction, variable jump height, coyote time, jump buffering, gravity-flip jumps, no bunny-hopping.
+- `tests/player.test.js` — acceleration to max speed, friction, variable jump height, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge.
 - `tests/save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, settings, and survival across instances/corrupt storage.
+- `tests/levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one `P` and at least one `B`; correct themes and flip-limits; gravity-zone and crumb placement.
 
 The CI workflow (`.github/workflows/deploy.yml`) runs these before every Pages deployment, so a failing suite blocks the deploy. Keep it green!
 
@@ -218,13 +224,19 @@ The headless tests cover physics and the controller, but they can't play the gam
 - [ ] Start screen loads; `START GAME` opens the **level select**.
 - [ ] Level select shows locked/unlocked levels with best times; finishing a level unlocks the next one.
 - [ ] The goose moves with acceleration/friction and jumps with variable height.
-- [ ] `SPACE` flips gravity; the goose lands on the ceiling and jumps "down".
+- [ ] `SPACE` flips gravity; the goose lands on the ceiling and jumps "down". **No** border glow or screen flash changes on flip — just the goose turning upside-down.
+- [ ] Levels 6–10 use the **sunset** palette (amber tiles, orange spikes, dusk sky) and show the **FLIP stamina bar** in the HUD.
+- [ ] On Levels 6–10, flipping mid-air uses the one shot; landing recharges it; a golden breadcrumb recharges it mid-air too.
+- [ ] **Gravity zones** (`z`) appear as amber boxes; inside one the goose snaps to normal gravity and `SPACE`/click does nothing.
+- [ ] `SHIFT` **Blink** teleports 3 tiles instantly: passes through spikes/enemies and one-tile walls, stops at thick walls and the border, leaves a fading afterimage trail, and shows a cooldown on the HUD.
+- [ ] Dying respawns instantly at the spawn point (no page reload / game-over delay), with a glitch flash + rewind sound; the level timer resets and previously collected crumbs reappear.
+- [ ] Spike/enemy contact only registers when the goose is **deeply** inside the hazard — grazing the edge of the sprite never kills.
 - [ ] The camera **smoothly lerps** toward the goose and leads slightly ahead when running.
 - [ ] `ESC` pauses; `SETTINGS` (volume slider + screen-shake toggle) is reachable from pause and the start screen.
 - [ ] Every `B` in the new level is reachable; collecting all of them ends the level.
 - [ ] Every `c` is collectible (attempt each one); the HUD `CRUMBS n/N` updates.
 - [ ] Enemies patrol and turn around; spikes kill on contact.
-- [ ] Falling off the level costs a life; 0 lives shows GAME OVER; the Victory screen appears after level 5.
+- [ ] Falling off the level costs a life; 0 lives shows GAME OVER; the Victory screen appears after level 10.
 - [ ] The timer runs in-game, freezes on pause, and shows on the level/victory screens.
 
 ---
@@ -233,7 +245,7 @@ The headless tests cover physics and the controller, but they can't play the gam
 
 1. Create a branch: `git checkout -b feat/my-cool-level`.
 2. Make your change and **run `npm test`** — all suites must pass.
-3. Commit with a clear message, e.g. `feat: add level 6 spike gauntlet`.
+3. Commit with a clear message, e.g. `feat: add level 11 spike gauntlet`.
 4. Push and open a PR against `main`. In the PR description, mention what you changed and how you tested it.
 
 Small, focused PRs are much easier to review. If your PR touches levels, include a screenshot or a short GIF — it makes the diff instantly understandable (see `docs/gifs/README.md` for recording tips).

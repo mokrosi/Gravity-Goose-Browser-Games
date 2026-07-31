@@ -160,6 +160,8 @@
         .cell.crumb::after { content: '\2605'; color: #facc15; }
         .cell.enemy { background: #4a044e; }
         .cell.enemy::after { content: '\1F438'; }
+        .cell.zone { background: rgba(251, 146, 60, 0.18); border-color: rgba(251, 191, 36, 0.6); }
+        .cell.zone::after { content: '\25C9'; color: #fbbf24; }
 
         .cell:hover { outline: 2px solid #06b6d4; outline-offset: -2px; }
 
@@ -212,6 +214,7 @@
             <button class="brush-btn" data-char="B"><span class="glyph">🍞</span><span class="tag">BREAD</span></button>
             <button class="brush-btn" data-char="c"><span class="glyph">★</span><span class="tag">CRUMB</span></button>
             <button class="brush-btn" data-char="E"><span class="glyph">🐸</span><span class="tag">FROG</span></button>
+            <button class="brush-btn" data-char="z"><span class="glyph">◉</span><span class="tag">ZONE</span></button>
         </div>
 
         <div class="group">
@@ -261,8 +264,8 @@
         const sourceSelect = document.getElementById('level-source');
 
         const LEVELS = new LevelManager().levels;
-        const CLASS_MAP = { ' ': 'air', '#': 'solid', '^': 'spike', 'P': 'spawn', 'B': 'bread', 'c': 'crumb', 'E': 'enemy' };
-        const LEGEND = [' ', '#', '^', 'P', 'B', 'c', 'E'];
+        const CLASS_MAP = { ' ': 'air', '#': 'solid', '^': 'spike', 'P': 'spawn', 'B': 'bread', 'c': 'crumb', 'E': 'enemy', 'z': 'zone' };
+        const LEGEND = [' ', '#', '^', 'P', 'B', 'c', 'E', 'z'];
 
         let brush = ' ';
         let grid = [];

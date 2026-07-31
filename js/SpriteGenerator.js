@@ -228,17 +228,19 @@ class SpriteGenerator {
         return canvas;
     }
 
-    static generateTileSprite() {
+    // theme: 'retro' (levels 1-5) or 'sunset' (levels 6-10, amber/orange).
+    static generateTileSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
-        const base = '#1E1B4B';
-        const border = '#312E81';
-        const neon = '#06B6D4';
-        const neonGlow = '#38BDF8';
-        const rivet = '#64748B';
+        const sunset = theme === 'sunset';
+        const base = sunset ? '#431407' : '#1E1B4B';
+        const border = sunset ? '#7C2D12' : '#312E81';
+        const neon = sunset ? '#F59E0B' : '#06B6D4';
+        const neonGlow = sunset ? '#FBBF24' : '#38BDF8';
+        const rivet = sunset ? '#FDBA74' : '#64748B';
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;
@@ -276,15 +278,17 @@ class SpriteGenerator {
         return canvas;
     }
 
-    static generateSpikeSprite() {
+    // theme: 'retro' (levels 1-5) or 'sunset' (levels 6-10, amber/orange).
+    static generateSpikeSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
-        const metalDark = '#475569';
-        const metalLight = '#94A3B8';
-        const tipRed = '#EF4444';
+        const sunset = theme === 'sunset';
+        const metalDark = sunset ? '#9A3412' : '#475569';
+        const metalLight = sunset ? '#FB923C' : '#94A3B8';
+        const tipRed = sunset ? '#F97316' : '#EF4444';
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;

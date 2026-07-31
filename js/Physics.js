@@ -1,6 +1,12 @@
 class Physics {
     static TILE_SIZE = 32;
 
+    // Hazard hitboxes are 15% smaller than their visual sprite so near-misses
+    // don't kill the goose ("tough but fair").
+    static get HAZARD_INSET() {
+        return this.TILE_SIZE * 0.15;
+    }
+
     static checkCollision(rect1, rect2) {
         return (
             rect1.x < rect2.x + rect2.width &&
@@ -8,6 +14,16 @@ class Physics {
             rect1.y < rect2.y + rect2.height &&
             rect1.y + rect1.height > rect2.y
         );
+    }
+
+    // Returns a copy of `rect` shrunk by `inset` px on every side.
+    static shrink(rect, inset) {
+        return {
+            x: rect.x + inset,
+            y: rect.y + inset,
+            width: rect.width - inset * 2,
+            height: rect.height - inset * 2
+        };
     }
 
     static solidInColumn(level, col, rowStart, rowEnd) {

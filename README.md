@@ -23,9 +23,14 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 
 ## ✨ Features
 
-- 🧲 **Anti-gravity mechanic** — press `SPACE` to instantly flip gravity and walk on the ceiling. Jumps, landings and coyote time all adapt to the gravity direction.
-- 🎮 **Modern game-feel controller** — coyote time (0.1s), jump buffering (0.1s), variable jump height, acceleration/friction, **wall slide + wall jump**, and a **dash** (Shift) with a brief gravity-off window and cooldown. Fully frame-rate independent via a delta-time game loop.
-- 🖱️ **Mouse & keyboard parity** — left-click jumps exactly like `W`/`↑`, so you can play entirely with the mouse or switch freely between input styles.
+- 🧲 **Anti-gravity mechanic** — press `SPACE` (or left-click) to instantly flip gravity and walk on the ceiling. Jumps, landings and coyote time all adapt to the gravity direction. On **Levels 6–10** the flip is a limited resource: one flip per airtime, recharged by landing or grabbing a golden breadcrumb, with a **stamina bar** in the HUD.
+- 🌇 **Sunset chapter** — levels 6–10 swap the neon-retro palette for a dusk look: amber bricks, glowing orange spikes and a star-scattered sunset backdrop.
+- 🌀 **Gravity zones** — amber-painted chambers (drawn as glowing zones) that **force gravity back to normal** and **lock the flip** while you're inside them, so you must ride the floor, not the ceiling.
+- 🎮 **Modern game-feel controller** — coyote time (0.1s), jump buffering (0.1s), variable jump height, acceleration/friction, **wall slide + wall jump**, and a **Blink** teleport (Shift): instantly jump 3 tiles forward, pass through hazards/enemies/thin walls with i-frames, on a strict cooldown. Fully frame-rate independent via a delta-time game loop.
+- 💫 **Blink afterimages** — every teleport leaves a translucent `globalAlpha` trail of fading goose copies showing exactly where you reappeared.
+- ⚡ **Instant respawn** — die and you're back at the spawn point in under 0.1s: no page reload, no long game-over sequence. A CSS glitch flash + rewind sound fire, the level timer resets, and any Golden Breadcrumbs you grabbed respawn so you can redo a 100% attempt immediately.
+- 🧸 **Forgiving hitboxes** — hazard (spike *and* enemy) hitboxes are shrunk 15% on every side vs. their sprite, so you only die on deep contact, never a near-miss.
+- 🖱️ **Mouse & keyboard parity** — left-click flips gravity exactly like `SPACE`, so you can play entirely with the mouse or switch freely between input styles.
 - 🎥 **Smooth lerp camera** — the viewport glides toward the goose with a mathematical `lerp`, and *leads ahead* based on velocity so you can see what's coming.
 - ⏱️ **Built-in speedrun timer** — per-level time in `MM:SS:ms` plus a full-run timer.
 - 🏆 **Best times + level select** — finish a level to unlock the next one; per-level and full-run bests are saved in `localStorage` and announced with a "NEW BEST" fanfare.
@@ -49,10 +54,12 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 | Key | Action |
 | :-- | :-- |
 | `A` / `D` or `←` / `→` | Move (acceleration & friction) |
-| `W` / `↑` / **left-click** | Jump — **tap** for a small hop, **hold** for full height |
-| `SHIFT` | Dash (works in mid-air; brief gravity-off + cooldown) |
-| `SPACE` | Flip gravity (walk on ceilings) |
+| `W` / `↑` | Jump — **tap** for a small hop, **hold** for full height |
+| `SHIFT` | Blink — instantly teleport 3 tiles (passes through hazards, enemies & thin walls; i-frames + cooldown) |
+| `SPACE` / **left-click** | Flip gravity (walk on ceilings). Levels 6–10: **once per airtime** — recharges on landing or on a golden breadcrumb |
 | `ESC` | Pause |
+
+> Levels 1–5: flip freely. Levels 6–10: the HUD **stamina bar** empties with your flip; you get it back the moment your feet touch ground or you grab a golden breadcrumb. Gravity flips are purely visual — the goose turns upside-down, and that's it.
 
 **Wall slide & wall jump:** hold into a wall while falling to slide down it slowly, then press Jump to kick off the wall in the opposite direction.
 
@@ -62,7 +69,7 @@ _Replace these placeholders with `.gif` recordings of your playthrough (see `doc
 2. Collect **all the bread** (`B`) in the level to advance.
 3. Avoid alien frogs and spike hazards — falling out of the world also costs a life.
 4. **Bonus:** collect the golden breadcrumbs (`c`) for a 100% completion run.
-5. Complete all **5 levels** to reach the Victory screen and see your final time.
+5. Complete all **10 levels** to reach the Victory screen and see your final time.
 
 ---
 
@@ -84,7 +91,7 @@ python -m http.server 8080
 # then open http://localhost:8080/editor.html
 ```
 
-Paint tiles/spikes/spawns/bread/crumbs/enemies, resize the grid, validate, then **Export JSON** and paste the result into `js/LevelManager.js` → `this.levels`. You can also paste an existing matrix into the editor and remix it. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full tutorial.
+Paint tiles/spikes/spawns/bread/crumbs/enemies/**gravity zones** (`z`), resize the grid, validate, then **Export JSON** and paste the result into `js/LevelManager.js` → `this.levels`. You can also paste an existing matrix into the editor and remix it. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full tutorial.
 
 ---
 
@@ -153,8 +160,9 @@ js/
   InputHandler.js        Edge-triggered keyboard + mouse input (pressed/released)
   Physics.js             Swept AABB collision engine (X then Y, sub-tile steps)
   Player.js              Goose controller: acceleration, coyote/buffer/variable jump,
-                         wall slide/wall jump, dash, gravity flip (gravity-relative ground checks)
-  LevelManager.js        The 5 levels as 2D string matrices + parsing
+                         wall slide/wall jump, blink teleport, gravity flip (gravity-relative ground checks)
+  LevelManager.js        The 10 levels (5 retro + 5 sunset) as 2D string matrices,
+                         parsing, gravity zones, theme + flip-limit per chapter
   Camera.js              Smooth lerp follow camera with velocity lookahead + snap()
   SoundManager.js        Procedural 8-bit Web Audio SFX, looping chiptune soundtrack
                          (tempo ramps near a best time), master volume
@@ -172,6 +180,7 @@ tests/
   physics.test.js        Headless physics suite (Node)
   player.test.js         Headless controller suite (Node)
   save.test.js           Headless SaveManager suite (Node)
+  levels.test.js         Headless level-data suite (Node)
 .github/workflows/       CI: test + deploy to GitHub Pages
 ```
 
@@ -194,11 +203,12 @@ The delta-time loop runs continuously (even while paused), which keeps physics s
 npm test
 ```
 
-The `tests/` folder contains three dependency-free Node suites that load the game modules in a sandboxed VM and assert real behavior:
+The `tests/` folder contains four dependency-free Node suites that load the game modules in a sandboxed VM and assert real behavior:
 
-- `physics.test.js` — flush floor/wall/ceiling resolution, no tunneling at terminal velocity, inverted-gravity grounding, bounds.
-- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, no bunny-hopping, wall slide/wall jump, dash + cooldown, mouse-click jump parity.
+- `physics.test.js` — flush floor/wall/ceiling resolution, no tunneling at terminal velocity, inverted-gravity grounding, bounds, forgiving hazard-hitbox shrinking.
+- `player.test.js` — max-speed acceleration, friction, variable jump, coyote time, jump buffering, gravity-flip jumps, once-per-airtime flip + landing recharge, no bunny-hopping, wall slide/wall jump, blink teleport + i-frames + cooldown, thin/thick-wall blink, border safety, mouse-click flip parity, gravity-zone snap + flip lockout, crumb recharge.
 - `save.test.js` — `SaveManager` persistence: unlocks, best times, lifetime crumbs, ghost replays, settings, corrupt-storage fallback.
+- `levels.test.js` — every level's matrix is rectangular, border-solid and parseable; exactly one spawn and one bread; theme + flip-limit rules; gravity-zone and crumb placement.
 
 ---
 

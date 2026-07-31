@@ -44,11 +44,11 @@ class Level {
 
 const soundStub = {
     playJump() {}, playFlip() {}, playCrumb() {}, playBest() {},
-    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playDash() {},
+    playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playBlink() {}, playReset() {},
 };
 const particleStub = {
     emitGravityFlip() {}, emitFootstep() {}, emitCrumbCollect() {},
-    emitBreadCollect() {}, emitHurt() {}, emitDash() {},
+    emitBreadCollect() {}, emitHurt() {}, emitBlink() {},
 };
 const noInput = {
     isKeyDown: () => false,
@@ -208,6 +208,27 @@ console.log('--- Physics tests ---');
     const c = { x: 20, y: 20, width: 10, height: 10 };
     assert(Physics.checkCollision(a, b) === true, 'overlapping rects collide');
     assert(Physics.checkCollision(a, c) === false, 'separated rects do not collide');
+}
+
+// 11. Forgiving hazard hitboxes: shrink insets every side by 15% of a tile
+{
+    const hazard = { x: 0, y: 0, width: T, height: T };
+    const inset = Physics.HAZARD_INSET;
+    assert(Math.abs(inset - T * 0.15) < 1e-9, 'HAZARD_INSET is 15% of a tile');
+    const hb = Physics.shrink(hazard, inset);
+    assert(hb.width === T - inset * 2, 'hitbox narrower by the inset on both sides');
+    assert(hb.height === T - inset * 2, 'hitbox shorter by the inset on both sides');
+    assert(hb.x === inset && hb.y === inset, 'hitbox inset on the top/left edges');
+    const playerOnVisualEdge = { x: 28, y: 28, width: 28, height: 28 };
+    const playerInInset = { x: 5, y: 5, width: 28, height: 28 };
+    assert(
+        Physics.checkCollision(playerOnVisualEdge, hb) === false,
+        'grazing the visual edge does not hit the forgiving hitbox'
+    );
+    assert(
+        Physics.checkCollision(playerInInset, hb) === true,
+        'deeply overlapping the hazard still hits'
+    );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
