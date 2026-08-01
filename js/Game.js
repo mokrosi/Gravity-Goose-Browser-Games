@@ -799,7 +799,7 @@ class Game {
         if (this.player.isDead) {
             this.soundManager.playHurt();
             this.soundManager.playReset();
-            if ("vibrate" in navigator) navigator.vibrate([30, 50, 30]);
+            if (typeof navigator !== 'undefined' && "vibrate" in navigator) navigator.vibrate([30, 50, 30]);
             this.particleSystem.emitHurt(this.player.x + 14, this.player.y + 14);
             if (!this.practiceRun) this.lives--;
             this.totalDeaths++;
@@ -900,7 +900,7 @@ class Game {
                 if (Physics.checkCollision(this.player, sw)) {
                     sw.activated = true;
                     this.soundManager.playSwitch();
-                    if ("vibrate" in navigator) navigator.vibrate(80);
+                    if (typeof navigator !== 'undefined' && "vibrate" in navigator) navigator.vibrate(80);
                     this.particleSystem.emitBreadCollect(sw.x + sw.width / 2, sw.y + sw.height / 2);
                     this.spawnFloatText('OVERLOAD!', sw.x + sw.width / 2, sw.y, 'perfect');
                     boss.hit();
@@ -976,7 +976,7 @@ class Game {
                         cp.active = true;
                         this.spawnPoint = { x: cp.x, y: cp.y, gravityDirection: this.player.gravitySign };
                         this.soundManager.playCollect();
-                        if ("vibrate" in navigator) navigator.vibrate(50);
+                        if (typeof navigator !== 'undefined' && "vibrate" in navigator) navigator.vibrate(50);
                         this.particleSystem.emitCrumbCollect(cp.x + cp.width / 2, cp.y + cp.height / 2);
                         this.spawnFloatText('CHECKPOINT', cp.x + cp.width / 2, cp.y - 10, 'perfect');
                     }
