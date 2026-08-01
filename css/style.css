@@ -384,7 +384,8 @@ a {
 
 /* Keep the menu column readable on very wide screens */
 .screen > * {
-    max-width: 620px;
+    max-width: 780px;
+    margin-inline: auto;
 }
 
 .screen::before {
@@ -641,13 +642,16 @@ a {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 16px;
+    align-content: flex-start;
+    width: 100%;
+    max-width: 780px;
+    gap: 12px;
     margin-bottom: 20px;
-    max-width: 90%;
     padding-bottom: 40px;
 }
 
 .world-header {
+    flex-basis: 100%;
     width: 100%;
     text-align: center;
     color: #f8fafc;
@@ -665,9 +669,10 @@ a {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    width: 92px;
-    height: 92px;
+    gap: 4px;
+    width: 76px;
+    height: 76px;
+    flex: 0 0 auto;
     position: relative;
     font-family: 'Press Start 2P', monospace;
     background: var(--neon-blue);
@@ -813,7 +818,7 @@ a {
     gap: 8px 16px;
     margin-bottom: 24px;
     width: 100%;
-    max-width: 420px;
+    max-width: 560px;
     justify-content: center;
 }
 
@@ -1186,17 +1191,37 @@ body.touch-device #touch-controls.hidden {
         border-radius: 12px !important;
     }
     #level-select-grid {
-        justify-content: center;
-        gap: 6px !important;
-        max-height: 50vh;
-        overflow-y: auto;
-        padding-bottom: 8px;
-        scroll-padding: 8px;
-        touch-action: pan-y;
+        max-width: calc(100vw - 24px);
+        gap: 8px !important;
+        padding-bottom: 16px;
+        margin-bottom: 12px;
     }
     .level-btn {
-        font-size: 10px !important;
+        width: 64px;
+        height: 64px;
+        gap: 3px !important;
         border-radius: 8px !important;
+        border-bottom-width: 3px;
+    }
+    .world-header {
+        font-size: 10px !important;
+        margin-top: 14px !important;
+        margin-bottom: 4px !important;
+    }
+    .level-num {
+        font-size: 12px;
+    }
+    .level-medal {
+        font-size: 10px;
+    }
+    .level-best {
+        font-size: 8px;
+    }
+    .level-practice {
+        width: 22px;
+        height: 22px;
+        line-height: 20px;
+        font-size: 11px;
     }
     .touch-zone-left {
         left: max(8px, env(safe-area-inset-left));

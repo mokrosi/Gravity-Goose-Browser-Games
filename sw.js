@@ -31,7 +31,7 @@ const ASSETS = [
     './js/VictoryCinematic.js',
     './js/main.js',
     './assets/images/banner.jpg',
-    './assets/images/og-banner.png',
+    './assets/images/banner.png',
     './assets/images/favicon.svg',
     './assets/images/logo.svg',
     './assets/images/apple-touch-icon.png',
