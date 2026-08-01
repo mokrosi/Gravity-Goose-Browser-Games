@@ -20,8 +20,13 @@ class Boss extends Entity {
     static DEATH_TIME = 1.8;
     static SWITCHES_NEEDED = 4;
 
-    constructor(x, y, arenaHeight) {
+    constructor(x, y, arenaHeight, bossType = 'frog') {
         super(x, y, 96, 84);
+        this.bossType = bossType; // 'frog' or 'cat'
+        if (this.bossType === 'cat') {
+            this.width = 110;
+            this.height = 110;
+        }
         this.arenaHeight = arenaHeight;
         this.state = 'idle';      // idle | telegraph | firing | cooldown | dead
         this.timer = Boss.IDLE_TIME;
@@ -33,29 +38,61 @@ class Boss extends Entity {
         this.hoverRange = Math.max(50, Math.min(140, this.arenaHeight / 4));
         // Y-coordinate the laser is aimed at (locked when the telegraph starts).
         this.aimY = this.hoverBase;
+        
+        // Dynamic timers
+        this.idleTime = Boss.IDLE_TIME;
+        this.telegraphTime = Boss.TELEGRAPH_TIME;
+        this.fireTime = Boss.FIRE_TIME;
+        this.cooldownTime = Boss.COOLDOWN_TIME;
+        
+        // Cat specific
+        if (this.bossType === 'cat') {
+            this.vx = 0;
+            this.vy = 0;
+            this.onGround = false;
+            this.faceDir = -1; // -1 left, 1 right
+            // Positive gravity is required for Physics.resolveY to track
+            // onGround — without it the cat never lands and can't jump.
+            this.gravity = 1;
+            this.jumpCooldown = 0;
+        }
     }
 
     get isDefeated() {
         return this.state === 'dead';
     }
 
-    // Deadly AABB while firing: a horizontal beam from the left wall to the
-    // cannon, at the height the goose stood when the shot was charged.
+    // Deadly AABB while firing
     firingBeam(levelWidth) {
         if (this.state !== 'firing') return null;
-        const right = this.x - 12;
-        if (right <= 0) return null;
-        return { x: 0, y: this.aimY - 5, width: right, height: 10 };
+        if (this.bossType === 'cat') {
+            // A sweeping dash/swipe attack covering a wide area around the cat
+            const sweepWidth = 200 + this.hits * 50;
+            if (this.faceDir === -1) {
+                return { x: this.x - sweepWidth, y: this.y + 20, width: sweepWidth, height: this.height - 20 };
+            } else {
+                return { x: this.x + this.width, y: this.y + 20, width: sweepWidth, height: this.height - 20 };
+            }
+        } else {
+            // Frog laser
+            const right = this.x - 12;
+            if (right <= 0) return null;
+            return { x: 0, y: this.aimY - 5, width: right, height: 10 };
+        }
     }
 
-    // One overload switch was hit — the boss shudders and flashes.
     hit() {
         this.hits++;
         this.flashTimer = 0.25;
-        this.timer = Math.min(this.timer, Boss.COOLDOWN_TIME);
+        this.timer = Math.min(this.timer, this.cooldownTime);
+        
+        // Escalation: Cat gets faster with every hit
+        if (this.bossType === 'cat') {
+            this.idleTime = Math.max(0.1, 0.4 - this.hits * 0.1);
+            this.telegraphTime = Math.max(0.15, 0.35 - this.hits * 0.05);
+        }
     }
 
-    // All four switches overloaded — enter the death sequence.
     defeat() {
         this.state = 'dead';
         this.timer = Boss.DEATH_TIME;
@@ -70,26 +107,84 @@ class Boss extends Entity {
             return;
         }
 
-        // Hover: gentle sine bob up and down on the right side of the arena.
-        this.y = this.hoverBase + Math.sin(this.wobble) * this.hoverRange;
+        if (this.bossType === 'cat') {
+            // --- Cat Physics & Chase Logic ---
+            this.vy += 1500 * dt; // Gravity
+            this.vy = Math.min(this.vy, 800);
+            this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
 
-        this.timer -= dt;
-        if (this.timer <= 0) {
-            if (this.state === 'idle') {
-                this.state = 'telegraph';
-                this.timer = Boss.TELEGRAPH_TIME;
-                // Lock the aim to the goose's altitude as the shot charges.
-                const target = player ? player.y + player.height / 2 : this.arenaHeight / 2;
-                this.aimY = Math.max(20, Math.min(this.arenaHeight - 20, target));
-            } else if (this.state === 'telegraph') {
-                this.state = 'firing';
-                this.timer = Boss.FIRE_TIME;
-            } else if (this.state === 'firing') {
-                this.state = 'cooldown';
-                this.timer = Boss.COOLDOWN_TIME;
+            // Chases during idle + cooldown, skids to a halt while it
+            // telegraphs and swipes so the attack stays dodgeable.
+            const chasing = player && (this.state === 'idle' || this.state === 'cooldown');
+            if (chasing) {
+                const dist = player.x + player.width / 2 - (this.x + this.width / 2);
+                if (Math.abs(dist) > 16) this.faceDir = Math.sign(dist) || -1;
+                this.vx = this.faceDir * (170 + this.hits * 45);
             } else {
-                this.state = 'idle';
-                this.timer = Boss.IDLE_TIME;
+                this.vx *= Math.pow(0.01, dt);
+                if (Math.abs(this.vx) < 10) this.vx = 0;
+            }
+
+            Physics.resolveX(this, level, dt);
+            Physics.resolveY(this, level, dt);
+            Physics.enforceBounds(this, level);
+
+            // Jump over walls that block the chase, or hop up to a goose
+            // that fights from a ledge above.
+            if (chasing && this.onGround && this.jumpCooldown === 0) {
+                const dist = player.x + player.width / 2 - (this.x + this.width / 2);
+                const wallBlocked = this.vx === 0 && Math.abs(dist) > 30;
+                const playerHigh = player.y + player.height < this.y + 20 && Math.abs(dist) < 340;
+                if (wallBlocked || playerHigh) {
+                    this.vy = -780;
+                    this.jumpCooldown = 0.7;
+                }
+            }
+
+            // Timers for Cat
+            this.timer -= dt;
+            if (this.timer <= 0) {
+                if (this.state === 'idle') {
+                    this.state = 'telegraph';
+                    this.timer = this.telegraphTime;
+                    // Face player for the swipe
+                    if (player) {
+                        this.faceDir = Math.sign(player.x - this.x) || -1;
+                    }
+                } else if (this.state === 'telegraph') {
+                    this.state = 'firing';
+                    this.timer = this.fireTime;
+                } else if (this.state === 'firing') {
+                    this.state = 'cooldown';
+                    this.timer = this.cooldownTime;
+                } else {
+                    this.state = 'idle';
+                    this.timer = this.idleTime;
+                }
+            }
+
+        } else {
+            // --- Frog Hover Logic ---
+            this.y = this.hoverBase + Math.sin(this.wobble) * this.hoverRange;
+
+            this.timer -= dt;
+            if (this.timer <= 0) {
+                if (this.state === 'idle') {
+                    this.state = 'telegraph';
+                    this.timer = this.telegraphTime;
+                    // Lock the aim
+                    const target = player ? player.y + player.height / 2 : this.arenaHeight / 2;
+                    this.aimY = Math.max(20, Math.min(this.arenaHeight - 20, target));
+                } else if (this.state === 'telegraph') {
+                    this.state = 'firing';
+                    this.timer = this.fireTime;
+                } else if (this.state === 'firing') {
+                    this.state = 'cooldown';
+                    this.timer = this.cooldownTime;
+                } else {
+                    this.state = 'idle';
+                    this.timer = this.idleTime;
+                }
             }
         }
     }
@@ -101,24 +196,155 @@ class Boss extends Entity {
         const telegraph = this.state === 'telegraph';
         const dying = this.state === 'dead';
 
-        // Laser beam (drawn behind everything: from the left wall to the cannon).
-        if (firing || telegraph) {
-            this._drawLaser(ctx, camera, level);
+        if (this.bossType === 'cat') {
+            if (firing || telegraph) this._drawCatSwipe(ctx, camera, level);
+        } else {
+            if (firing || telegraph) this._drawLaser(ctx, camera, level);
         }
 
         if (dx + this.width < 0 || dx > camera.width || dy + this.height < 0 || dy > camera.height) return;
 
-        const shake = dying
-            ? (Math.random() * 8 - 4) * Math.max(0, this.timer / Boss.DEATH_TIME)
-            : 0;
-        const bx = dx + shake;
+        const shake = dying ? (Math.random() * 8 - 4) * Math.max(0, this.timer / Boss.DEATH_TIME) : 0;
+        let bx = dx + shake;
         const by = dy + shake;
         const flash = this.flashTimer > 0;
-        const hullColor = flash ? '#ffffff' : (dying ? '#3f3f46' : '#1e1b4b');
-        const accentColor = flash ? '#fecdd3' : (dying ? '#52525b' : '#312e81');
 
         ctx.save();
         ctx.globalAlpha = dying ? Math.max(0.15, this.timer / Boss.DEATH_TIME) : 1;
+
+        if (this.bossType === 'cat') {
+            this._drawCat(ctx, bx, by, flash, dying, firing, telegraph);
+        } else {
+            this._drawFrog(ctx, bx, by, flash, dying, firing, telegraph);
+        }
+
+        ctx.restore();
+    }
+
+    _drawCat(ctx, bx, by, flash, dying, firing, telegraph) {
+        const furColor = flash ? '#ffffff' : (dying ? '#71717a' : '#ea580c'); // Orange cat
+        const bellyColor = flash ? '#fef08a' : (dying ? '#a1a1aa' : '#fde047');
+        const eyeColor = (firing || telegraph || dying) ? '#ef4444' : (flash ? '#ffffff' : '#10b981'); // Green eyes to red
+        
+        ctx.save();
+        // Flip horizontally based on faceDir. Origin shift for flip.
+        if (this.faceDir === 1) {
+            ctx.translate(bx + this.width / 2, by);
+            ctx.scale(-1, 1);
+            ctx.translate(-(bx + this.width / 2), -by);
+        }
+
+        // Tail
+        ctx.fillStyle = furColor;
+        const tailWobble = Math.sin(this.wobble * 2) * 10;
+        ctx.beginPath();
+        ctx.moveTo(bx + this.width - 20, by + this.height - 20);
+        ctx.quadraticCurveTo(bx + this.width + 20, by + this.height - 50 + tailWobble, bx + this.width - 10, by + 10 + tailWobble);
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = furColor;
+        ctx.stroke();
+
+        // Body
+        ctx.fillStyle = furColor;
+        ctx.beginPath();
+        ctx.ellipse(bx + this.width / 2 + 10, by + this.height / 2 + 10, 45, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = bellyColor;
+        ctx.beginPath();
+        ctx.ellipse(bx + this.width / 2 + 5, by + this.height / 2 + 20, 30, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head
+        ctx.fillStyle = furColor;
+        ctx.beginPath();
+        ctx.ellipse(bx + 30, by + 40, 35, 30, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Ears
+        ctx.beginPath();
+        ctx.moveTo(bx, by + 20);
+        ctx.lineTo(bx + 20, by);
+        ctx.lineTo(bx + 30, by + 15);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(bx + 30, by + 15);
+        ctx.lineTo(bx + 45, by + 5);
+        ctx.lineTo(bx + 50, by + 25);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = eyeColor;
+        ctx.beginPath();
+        ctx.ellipse(bx + 15, by + 40, 8, 12, 0, 0, Math.PI * 2);
+        ctx.ellipse(bx + 45, by + 40, 8, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupils
+        ctx.fillStyle = '#000';
+        const pupilW = (firing || telegraph) ? 2 : 4;
+        ctx.beginPath();
+        ctx.ellipse(bx + 15, by + 40, pupilW, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(bx + 45, by + 40, pupilW, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nose/Mouth
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.moveTo(bx + 25, by + 55);
+        ctx.lineTo(bx + 35, by + 55);
+        ctx.lineTo(bx + 30, by + 60);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+
+    _drawCatSwipe(ctx, camera, level) {
+        const firing = this.state === 'firing';
+        const sweepWidth = 200 + this.hits * 50;
+        
+        let startX, startY, width, height;
+        if (this.faceDir === -1) {
+            startX = this.x - sweepWidth - camera.x;
+        } else {
+            startX = this.x + this.width - camera.x;
+        }
+        startY = this.y + 20 - camera.y;
+        width = sweepWidth;
+        height = this.height - 20;
+
+        ctx.save();
+        if (!firing) {
+            // Telegraph: Draw a faint red warning zone
+            ctx.globalAlpha = 0.3 * (0.5 + 0.5 * Math.sin(this.wobble * 15));
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(startX, startY, width, height);
+        } else {
+            // Swipe: Draw sharp white/red claw marks
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY + 20 + i * 20);
+                ctx.lineTo(startX + width, startY + 20 + i * 20);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY + 20 + i * 20);
+                ctx.lineTo(startX + width, startY + 20 + i * 20);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+
+    _drawFrog(ctx, bx, by, flash, dying, firing, telegraph) {
+        const hullColor = flash ? '#ffffff' : (dying ? '#3f3f46' : '#1e1b4b');
+        const accentColor = flash ? '#fecdd3' : (dying ? '#52525b' : '#312e81');
 
         // Thruster glow under the hull (pulses as it hovers).
         const thruster = 0.5 + 0.5 * Math.sin(this.wobble * 3);
@@ -174,26 +400,21 @@ class Boss extends Entity {
         ctx.fillRect(bx - 14, by + 26, 20, 12);
         ctx.fillStyle = (firing || telegraph) ? '#f43f5e' : (flash ? '#ffffff' : '#94a3b8');
         ctx.fillRect(bx - 20, by + 28, 10, 8);
-
-        ctx.restore();
     }
 
-    // Horizontal beam from the left wall to the cannon at aimY.
     _drawLaser(ctx, camera, level) {
-        const levelWidth = level.width * Physics.TILE_SIZE;
         const right = this.x - camera.x - 12;
         const y = this.aimY - camera.y;
         const firing = this.state === 'firing';
         const flicker = firing ? 1 : 0.35 + 0.35 * Math.abs(Math.sin(this.wobble * 6));
-        const width = right;
-
+        
         ctx.save();
         ctx.globalAlpha = (firing ? 0.55 : 0.12) * flicker;
         ctx.fillStyle = '#e11d48';
-        ctx.fillRect(0, y - 3, width, 12);
+        ctx.fillRect(0, y - 3, right, 12);
         ctx.globalAlpha = (firing ? 1 : 0.35) * flicker;
         ctx.fillStyle = '#fecdd3';
-        ctx.fillRect(0, y + 1, width, 4);
+        ctx.fillRect(0, y + 1, right, 4);
         ctx.restore();
     }
 }

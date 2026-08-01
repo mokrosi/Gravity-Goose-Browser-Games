@@ -271,6 +271,13 @@ class Player extends Entity {
         Physics.resolveX(this, level, dt);
         Physics.resolveY(this, level, dt);
         Physics.enforceBounds(this, level);
+        Physics.checkSteamVents(this, level);
+
+        if (this.steamLaunch && particleSystem) {
+            particleSystem.emitDust(this.x + this.width / 2, this.y + this.height, 10);
+            this.steamLaunch = false; // Reset the flag
+            this.squashTimer = 0.2; // Stretch effect!
+        }
 
         // --- Hard landing: squash for 150ms + dust burst at the contact edge ---
         if (wasAirborne && (this.onGround || this.onCeiling) && fallSpeed > 220) {

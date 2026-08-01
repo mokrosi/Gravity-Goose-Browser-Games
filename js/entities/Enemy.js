@@ -26,10 +26,10 @@ class Enemy extends Entity {
         }
     }
 
-    draw(ctx, camera, assetManager) {
+    draw(ctx, camera, assetManager, theme) {
         if (this.isDead) return;
 
-        const img = assetManager.getImage('enemy_frog');
+        const img = assetManager.getImage(theme === 'kitchen' ? 'enemy_bug' : 'enemy_frog');
         if (img) {
             ctx.save();
             let drawX = this.x - camera.x;

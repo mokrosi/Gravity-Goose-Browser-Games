@@ -152,4 +152,38 @@ class Physics {
             entity.isDead = true;
         }
     }
+
+    static checkSteamVents(entity, level) {
+        if (!level.steamVents || level.steamVents.length === 0) return;
+
+        if (!entity.steamCooldown) entity.steamCooldown = 0;
+        if (entity.steamCooldown > 0) {
+            entity.steamCooldown--;
+            return;
+        }
+
+        const hitBox = {
+            x: entity.x + 4,
+            y: entity.y,
+            width: entity.width - 8,
+            height: entity.height
+        };
+
+        for (const vent of level.steamVents) {
+            if (this.checkCollision(hitBox, vent)) {
+                const gravDir = Math.sign(entity.gravity) || 1;
+                entity.vy = -750 * gravDir; // Strong upward/downward impulse
+                entity.steamCooldown = 15; // frames
+                
+                // Allow a jump immediately after bouncing if we want? Or just treat it like an air launch
+                entity.onGround = false;
+                entity.onCeiling = false;
+                entity.flipsInAir = 0; // Restore gravity flip so player can react mid-air
+                
+                // Optional: trigger particle effect on entity (could be handled in game loop, but here is fine for data)
+                entity.steamLaunch = true;
+                break;
+            }
+        }
+    }
 }

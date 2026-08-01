@@ -1,11 +1,12 @@
 /*
  * Headless level-data test suite (Node.js, no DOM required).
  *
- * Validates all 20 level matrices (rectangular rows, solid borders, one
+ * Validates all 30 level matrices (rectangular rows, solid borders, one
  * player start and one bread per level) and the LevelManager loading logic:
- * retro/sunset/cyberpunk themes, forced-gravity zones, crumbling platforms,
- * moving lasers, the Level 6+ flip-limit rule, the Level Devil troll traps
- * ('F' fake crumbs + 'T' trigger zones) and the Level 20 boss arena.
+ * retro/sunset/cyberpunk/mothership/kitchen themes, forced-gravity zones,
+ * crumbling platforms, steam vents, moving lasers, the Level 6+ flip-limit
+ * rule, the Level Devil troll traps ('F' fake crumbs + 'T' trigger zones)
+ * and the Level 20 / Level 30 boss arenas.
  * Run with:  node tests/levels.test.js
  */
 const path = require('path');
@@ -43,8 +44,8 @@ console.log('--- Level tests ---');
 
 const lm = new LevelManager();
 
-// 1. Twenty levels
-assert(lm.levels.length === 20, 'exactly 20 levels');
+// 1. Thirty levels
+assert(lm.levels.length === 30, 'exactly 30 levels');
 
 // 2. Every matrix is a solid rectangle with a solid border and valid chars
 for (let i = 0; i < lm.levels.length; i++) {
@@ -63,7 +64,7 @@ for (let i = 0; i < lm.levels.length; i++) {
     assert(/^#+$/.test(layout[layout.length - 1]), `L${i + 1} bottom row all solid`);
     layout.forEach((row, r) => {
         assert(row[0] === '#' && row[row.length - 1] === '#', `L${i + 1} row ${r} has solid side walls`);
-        assert(/^[#^PBcEzCSFT. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
+        assert(/^[#^PBcEzCSFTV. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
     });
 }
 
@@ -123,8 +124,22 @@ for (let i = 13; i < 19; i++) {
     assert(corners[0] === '1,1' && corners[3] === '23,13', 'L20 switches sit in the arena corners');
 }
 
+// 7b. Level 30: single-screen kitchen boss arena with exactly 4 corner switches
+{
+    lm.loadLevel(29);
+    assert(lm.theme === 'kitchen', 'L30 uses the kitchen theme');
+    assert(lm.isBossLevel === true, 'L30 is a boss level');
+    assert(lm.boss !== null, 'L30 loads a boss');
+    assert(lm.switches.length === 4, 'L30 has exactly 4 overload switches');
+    assert(lm.boss.x >= 0 && lm.boss.y >= 0, 'L30 boss has a valid spawn');
+    assert(lm.width * lm.tileSize === 25 * 32, 'L30 arena is exactly phone-width');
+    assert(lm.trapZones.length === 0 && lm.fakeCrumbs.length === 0, 'L30 has no troll traps');
+    const corners = lm.switches.map(s => `${Math.round(s.x / 32)},${Math.round(s.y / 32)}`).sort();
+    assert(corners[0] === '1,1' && corners[3] === '23,14', 'L30 switches sit in the arena corners');
+}
+
 // 8. Every level loads exactly one bread and a valid player start
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 30; i++) {
     lm.loadLevel(i);
     assert(lm.items.length === 1, `L${i + 1} loads exactly one bread item`);
     assert(lm.playerStart.x >= 0 && lm.playerStart.y >= 0, `L${i + 1} has a player start`);

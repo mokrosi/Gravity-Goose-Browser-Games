@@ -360,7 +360,16 @@ a {
     transition: opacity 0.3s ease;
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding: 40px 16px 60px 16px;
+    padding: 40px 16px 0px 16px; /* Removed bottom padding, handled by ::after */
+}
+
+/* Fix flexbox scroll padding ignoring the bottom padding */
+.screen::after {
+    content: '';
+    display: block;
+    min-height: 60px;
+    flex-shrink: 0;
+    width: 100%;
 }
 
 .screen.hidden {
@@ -562,6 +571,9 @@ a {
     box-shadow: 0 6px 0 #9f1239;
     margin-top: 12px;
 }
+.btn-ghost:last-child {
+    margin-bottom: 60px; /* Force spacing at the bottom of the container */
+}
 
 .btn-ghost:hover {
     background-color: #fb7185;
@@ -601,6 +613,19 @@ a {
     margin-bottom: 20px;
     max-width: 90%;
     padding-bottom: 40px;
+}
+
+.world-header {
+    width: 100%;
+    text-align: center;
+    color: #f8fafc;
+    font-size: 14px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 0px #090d16;
+    letter-spacing: 1px;
+    border-bottom: 2px solid #334155;
+    padding-bottom: 8px;
 }
 
 .level-btn {
@@ -661,6 +686,19 @@ a {
 .level-btn.mothership:hover:not(:disabled) {
     background-color: #34d399;
 }
+
+/* Levels 21-30 preview the kitchen palette */
+.level-btn.kitchen:not(.locked) {
+    background: linear-gradient(180deg, #fef3c7, #f59e0b);
+    border-bottom-color: #f97316;
+    color: #78350f;
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+}
+
+.level-btn.kitchen:hover:not(:disabled) {
+    background-color: #fef3c7;
+}
+
 
 /* Practice-Mode chip on unlocked level buttons: secondary, stakes-free action */
 .level-practice {

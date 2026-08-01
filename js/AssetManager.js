@@ -20,6 +20,10 @@ class AssetManager {
         // Mothership palette for Levels 16-20
         this.images['tileset_mothership'] = SpriteGenerator.generateTileSprite('mothership');
         this.images['spikes_mothership'] = SpriteGenerator.generateSpikeSprite('mothership');
+        // Kitchen palette for Levels 21-30
+        this.images['tileset_kitchen'] = SpriteGenerator.generateTileSprite('kitchen');
+        this.images['spikes_kitchen'] = SpriteGenerator.generateSpikeSprite('kitchen');
+        this.images['enemy_bug'] = SpriteGenerator.generateBugSprite();
     }
 
     loadImage(key, src) {

@@ -121,7 +121,7 @@ class Game {
         });
         bind('btn-share-victory', 'click', () => {
             const time = this.formatTime(this.totalTimer);
-            this.shareRun(`I beat Gravity Goose Level 20 & defeated the Boss in ${time}! 🏆🍞`);
+            this.shareRun(`I beat Gravity Goose Level 30 & defeated the Final Boss in ${time}! 🏆🍞`);
         });
 
         bind('sfx-volume', 'input', () => {
@@ -203,7 +203,20 @@ class Game {
             const unlocked = this.save.isLevelUnlocked(i);
             const best = this.save.getBestTime(i);
             const btn = document.createElement('button');
-            const chapterClass = i >= 15 ? ' mothership' : (i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : ''));
+            
+            // Add chapter header for every 5 (retro/sunset/cyberpunk/mothership) or 10 (kitchen) levels
+            if (i === 0 || i === 5 || i === 10 || i === 15 || i === 20) {
+                const header = document.createElement('div');
+                header.className = 'world-header';
+                if (i === 0) header.innerText = 'WORLD 1: RETRO RUN';
+                if (i === 5) header.innerText = 'WORLD 2: SUNSET SKIES';
+                if (i === 10) header.innerText = 'WORLD 3: CYBERPUNK CITY';
+                if (i === 15) header.innerText = 'WORLD 4: ALIEN MOTHERSHIP';
+                if (i === 20) header.innerText = 'WORLD 5: KITCHEN CHAOS';
+                grid.appendChild(header);
+            }
+            
+            const chapterClass = i >= 20 ? ' kitchen' : (i >= 15 ? ' mothership' : (i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : '')));
             btn.className = 'level-btn' + chapterClass + (unlocked ? '' : ' locked');
             btn.disabled = !unlocked;
             const medal = unlocked ? this.save.getMedalGlyph(i, this.levelManager) : '';
@@ -293,11 +306,11 @@ class Game {
             this.player = this.createPlayer();
             this.bossDeathTimer = 0;
             this.bossVictoryShown = false;
-            // Level 20 is a single-screen boss arena: the camera never scrolls.
-            this.camera.locked = (this.currentLevel === 19);
-            // Let CSS strip the mobile zoom-in hack on the boss arena so the
-            // corner switches stay on screen.
-            document.body.classList.toggle('boss-level', this.currentLevel === 19);
+            // Level 20 & 30 are single-screen boss arenas: the camera never scrolls.
+            this.camera.locked = (this.currentLevel === 19 || this.currentLevel === 29);
+            // Hide mobile zoom-strip on the boss level (it doesn't zoom)
+            // so we can fit more of the arena on screen.
+            document.body.classList.toggle('boss-level', this.currentLevel === 19 || this.currentLevel === 29);
             this.camera.snap(
                 this.player,
                 this.levelManager.width * this.levelManager.tileSize,
@@ -737,13 +750,19 @@ class Game {
             }
             if (this.bossDeathTimer <= 0 && !this.bossVictoryShown) {
                 this.bossVictoryShown = true;
-                if (!this.practiceRun) {
-                    this.save.setBestTime(this.currentLevel, this.levelTimer);
-                    this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                if (this.currentLevel === 29) {
+                    if (!this.practiceRun) {
+                        this.save.setBestTime(this.currentLevel, this.levelTimer);
+                        this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                        this.save.unlockLevel(this.currentLevel + 1); // For achievements
+                        this.achievements.checkAll();
+                    } else {
+                        this.ghost.stopRecording();
+                    }
+                    this.showVictory();
                 } else {
-                    this.ghost.stopRecording();
+                    this.winLevel(true);
                 }
-                this.showVictory();
                 return;
             }
         } else if (boss) {
@@ -813,64 +832,65 @@ class Game {
         // Win condition for level (the boss arena is cleared via its switches
         // instead — collecting the bread there doesn't end the fight).
         if (allItemsCollected && this.levelManager.items.length > 0 && !this.levelManager.isBossLevel) {
-            this.state = 'LEVEL_COMPLETE';
-            this.soundManager.playWin();
-            document.getElementById('level-bread-score').innerText = this.levelManager.items.length;
-            document.getElementById('level-crumb-score').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
-            document.getElementById('level-time').innerText = this.formatTime(this.levelTimer);
-
-            const bestEl = document.getElementById('level-best');
-            if (this.practiceRun) {
-                // Practice clears never touch best times, ghosts, medals,
-                // achievements or level unlocks.
-                bestEl.innerText = 'PRACTICE CLEAR — NOT SAVED';
-                bestEl.classList.remove('best-flash');
-                this.ghost.stopRecording();
-            } else {
-                const newBest = this.save.setBestTime(this.currentLevel, this.levelTimer);
-                if (newBest) {
-                    bestEl.innerText = 'NEW BEST TIME!';
-                    bestEl.classList.add('best-flash');
-                    this.soundManager.playBest();
-                    // Persist this run as the ghost replay for future attempts.
-                    this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
-                } else {
-                    this.ghost.stopRecording();
-                    bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
-                    bestEl.classList.remove('best-flash');
-                }
-                // Completing a level unlocks the next one in the level select.
-                this.save.unlockLevel(this.currentLevel + 1);
-                this.achievements.checkAll();
-            }
-
-            const medalEl = document.getElementById('level-medal');
-            if (medalEl) {
-                if (this.practiceRun) {
-                    medalEl.innerText = '';
-                } else {
-                    const medalGlyph = this.save.getMedalGlyph(this.currentLevel, this.levelManager);
-                    medalEl.innerText = medalGlyph ? `Medal Earned: ${medalGlyph}` : '';
-                }
-            }
-
-            this.soundManager.stopMusic();
-            this.showScreen('level-complete-screen');
-            this.touchControls.hide();
+            this.winLevel(false);
         }
 
         this.camera.follow(this.player, this.levelManager.width * this.levelManager.tileSize, this.levelManager.height * this.levelManager.tileSize);
     }
 
+    winLevel(isBoss = false) {
+        this.state = 'LEVEL_COMPLETE';
+        this.soundManager.playWin();
+        document.getElementById('level-bread-score').innerText = isBoss ? 'BOSS DEFEATED' : this.levelManager.items.length;
+        document.getElementById('level-crumb-score').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
+        document.getElementById('level-time').innerText = this.formatTime(this.levelTimer);
+
+        const bestEl = document.getElementById('level-best');
+        if (this.practiceRun) {
+            bestEl.innerText = 'PRACTICE CLEAR — NOT SAVED';
+            bestEl.classList.remove('best-flash');
+            this.ghost.stopRecording();
+        } else {
+            const newBest = this.save.setBestTime(this.currentLevel, this.levelTimer);
+            if (newBest) {
+                bestEl.innerText = 'NEW BEST TIME!';
+                bestEl.classList.add('best-flash');
+                this.soundManager.playBest();
+                this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+            } else {
+                this.ghost.stopRecording();
+                bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
+                bestEl.classList.remove('best-flash');
+            }
+            this.save.unlockLevel(this.currentLevel + 1);
+            this.achievements.checkAll();
+        }
+
+        const medalEl = document.getElementById('level-medal');
+        if (medalEl) {
+            if (this.practiceRun) {
+                medalEl.innerText = '';
+            } else {
+                const medalGlyph = this.save.getMedalGlyph(this.currentLevel, this.levelManager);
+                medalEl.innerText = medalGlyph ? `Medal Earned: ${medalGlyph}` : '';
+            }
+        }
+
+        this.soundManager.stopMusic();
+        this.showScreen('level-complete-screen');
+        this.touchControls.hide();
+    }
+
     drawParallaxBackground() {
         // Deep Space Background with Parallax Starfield & Synth Grid.
-        // 6-10 sunset/amber; 11-15 neon cyberpunk magenta; 16-20 mothership bio-green.
+        // 6-10 sunset/amber; 11-15 neon cyberpunk magenta; 16-20 mothership bio-green; 21-30 kitchen cream.
+        const kitchen = this.levelManager.theme === 'kitchen';
         const cyberpunk = this.levelManager.theme === 'cyberpunk';
         const sunset = this.levelManager.theme === 'sunset';
         const mothership = this.levelManager.theme === 'mothership';
-        const bg = mothership ? '#03120d' : (cyberpunk ? '#0b0118' : (sunset ? '#2b1004' : '#0f172a'));
-        const starColor = mothership ? '#a7f3d0' : (cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff'));
-        const gridColor = mothership ? 'rgba(52, 211, 153, 0.10)' : (cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)'));
+        const bg = kitchen ? '#1a0d0a' : (mothership ? '#03120d' : (cyberpunk ? '#0b0118' : (sunset ? '#2b1004' : '#0f172a')));
+        const starColor = kitchen ? '#f97316' : (mothership ? '#a7f3d0' : (cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff')));
+        const gridColor = kitchen ? 'rgba(249, 115, 22, 0.15)' : (mothership ? 'rgba(52, 211, 153, 0.10)' : (cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)')));
 
         this.ctx.fillStyle = bg;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -930,7 +950,7 @@ class Game {
             }
 
             for (let enemy of this.levelManager.entities) {
-                enemy.draw(this.ctx, this.camera, this.assetManager);
+                enemy.draw(this.ctx, this.camera, this.assetManager, this.levelManager.theme);
             }
 
             for (let laser of this.levelManager.lasers) {

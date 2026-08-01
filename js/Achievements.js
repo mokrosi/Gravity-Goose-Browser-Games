@@ -3,7 +3,9 @@ const ACHIEVEMENTS_LIST = [
     { id: 'breadWinner', title: 'Bread Winner', desc: 'Collect 50 Golden Breadcrumbs', icon: '🍞' },
     { id: 'speedDemon', title: 'Speed Demon', desc: 'Earn a Gold Medal on any level', icon: '⚡' },
     { id: 'grandChampion', title: 'Grand Champion', desc: 'Clear Level 20 & Defeat Boss', icon: '🏆' },
-    { id: 'completionist', title: 'Completionist', desc: 'Earn Gold Medals on all 20 levels', icon: '🌟' }
+    { id: 'world4Completionist', title: 'World 4 Completionist', desc: 'Earn Gold Medals on first 20 levels', icon: '🌟' },
+    { id: 'culinaryConqueror', title: 'Culinary Conqueror', desc: 'Clear Level 30 & Defeat Mittens', icon: '🐈' },
+    { id: 'trueCompletionist', title: 'True Completionist', desc: 'Earn Gold Medals on all 30 levels', icon: '👑' }
 ];
 
 class AchievementsManager {
@@ -27,7 +29,7 @@ class AchievementsManager {
         }
 
         // 3. Speed Demon
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < levelMgr.levels.length; i++) {
             if (save.getMedal(i, levelMgr.parTimes[i]) === 'gold') {
                 this.unlock('speedDemon');
                 break;
@@ -39,15 +41,31 @@ class AchievementsManager {
             this.unlock('grandChampion');
         }
 
-        // 5. Completionist
-        let goldCount = 0;
+        // 5. World 4 Completionist
+        let goldCountW4 = 0;
         for (let i = 0; i < 20; i++) {
             if (save.getMedal(i, levelMgr.parTimes[i]) === 'gold') {
-                goldCount++;
+                goldCountW4++;
             }
         }
-        if (goldCount >= 20) {
-            this.unlock('completionist');
+        if (goldCountW4 >= 20) {
+            this.unlock('world4Completionist');
+        }
+
+        // 6. Culinary Conqueror
+        if (save.isLevelUnlocked(30) || save.getBestTime(29) !== null) {
+            this.unlock('culinaryConqueror');
+        }
+
+        // 7. True Completionist
+        let goldCountAll = 0;
+        for (let i = 0; i < 30; i++) {
+            if (save.getMedal(i, levelMgr.parTimes[i]) === 'gold') {
+                goldCountAll++;
+            }
+        }
+        if (goldCountAll >= 30) {
+            this.unlock('trueCompletionist');
         }
     }
 

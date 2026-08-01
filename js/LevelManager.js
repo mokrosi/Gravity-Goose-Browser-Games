@@ -19,15 +19,17 @@ class LevelManager {
         this.fakeCrumbs = []; // 'F' troll crumbs: look like Golden Breadcrumbs, turn deadly
         this.trapZones = []; // 'T' invisible trigger zones: spawn hidden spike traps
         this.droppedHazards = []; // spikes spawned at runtime by traps (drawn + reset)
-        this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10), 'cyberpunk' (11-15), 'mothership' (16-20)
+        this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10), 'cyberpunk' (11-15), 'mothership' (16-20), 'kitchen' (21-30)
         this.playerStart = { x: 50, y: 50 };
 
-        // Target par times in seconds for 20 levels (indices 0 to 19)
+        // Target par times in seconds for 30 levels (indices 0 to 29)
         this.parTimes = [
             12.0, 15.0, 18.0, 20.0, 22.0,
-            25.0, 25.0, 28.0, 30.0, 32.0,
-            35.0, 38.0, 40.0, 42.0, 45.0,
-            48.0, 50.0, 52.0, 55.0, 60.0
+            14.0, 16.0, 25.0, 30.0, 20.0,
+            15.0, 18.0, 20.0, 22.0, 25.0,
+            24.0, 28.0, 30.0, 35.0, 45.0,
+            18.0, 20.0, 22.0, 24.0, 26.0,
+            28.0, 30.0, 32.0, 34.0, 45.0
         ];
 
         // Moving-laser spawns per level (index -> config list).
@@ -74,9 +76,6 @@ class LevelManager {
             ]
         };
 
-        // 'T' trigger tiles (Levels 14-19): when the goose enters the trigger
-        // tile, the listed spike rects (px) appear instantly. Tile coords in
-        // tx/ty must match an actual 'T' in the matrix.
         this.trapConfigs = {
             13: [
                 { tx: 39, ty: 8, drops: [{ x: 41 * 32, y: 8 * 32, width: 64, height: 32 }] }
@@ -109,15 +108,12 @@ class LevelManager {
             ]
         };
 
-        // Level 20 boss spawn (world px) — hovers on the right side of the arena.
         this.bossConfigs = {
-            19: { x: 632, y: 200 }
+            19: { x: 632, y: 200 },
+            29: { x: 420, y: 370 }
         };
 
-        // Levels 6-10 introduce the sunset palette, forced-gravity zones ('z')
-        // and the once-per-airtime gravity-flip stamina rule.
         this.levels = [
-            // Level 1: Introduction to Movement & Gravity Boots
             [
                 "################################",
                 "#                              #",
@@ -131,7 +127,6 @@ class LevelManager {
                 "#P                             #",
                 "################################"
             ],
-            // Level 2: Gravity Flip Corridor & Spikes
             [
                 "################################",
                 "#######^^^^^^^^^^^#######      #",
@@ -145,7 +140,6 @@ class LevelManager {
                 "#######^^^^################   B#",
                 "################################"
             ],
-            // Level 3: Alien Frog Patrol
             [
                 "########################################",
                 "#                                      #",
@@ -159,7 +153,6 @@ class LevelManager {
                 "####  ^^^^         ######      B       #",
                 "########################################"
             ],
-            // Level 4: The Inverted Gravity Maze
             [
                 "########################################",
                 "#P #^^^^^^^^#  c     #^^^^^^^^#        #",
@@ -172,7 +165,6 @@ class LevelManager {
                 "#^^^^^^^#^^^^^^^^#^^^^^^^^#^^^^^^^^#   #",
                 "########################################"
             ],
-            // Level 5: The Ultimate Sandwich Heist
             [
                 "################################################",
                 "#^^^^^^^^^^^^^^^#^^^^^^^^^^^^^#^^^^^^^^^^^^^^^^#",
@@ -185,7 +177,6 @@ class LevelManager {
                 "#P  E   E       #      E      #     B          #",
                 "################################################"
             ],
-            // Level 6: Sunset Gauntlet — first forced-gravity zones
             [
                 "################################################",
                 "#                                              #",
@@ -198,7 +189,6 @@ class LevelManager {
                 "#P       #                       #       B     #",
                 "################################################"
             ],
-            // Level 7: Dusk Corridors — ceiling runs through zones
             [
                 "################################################",
                 "#     c             zzzzzz          ^^^        #",
@@ -211,7 +201,6 @@ class LevelManager {
                 "#P        ##########                           #",
                 "################################################"
             ],
-            // Level 8: Amber Gauntlet — zone towers
             [
                 "####################################################",
                 "#        c        zzzzzzzzzz       ^^^^            #",
@@ -225,7 +214,6 @@ class LevelManager {
                 "#P   E                zzzz        E                #",
                 "####################################################"
             ],
-            // Level 9: Crimson Towers — spike gauntlets & twin zones
             [
                 "########################################################",
                 "#      c          zzzzzzzzzz          zzzzzzzzzz       #",
@@ -239,7 +227,6 @@ class LevelManager {
                 "#P      ##############################                 #",
                 "########################################################"
             ],
-            // Level 10: Grand Heist Finale — zone gauntlet rush
             [
                 "########################################################",
                 "#        zzzzzzzzzzzz           zzzzzzzzzzzzz          #",
@@ -253,7 +240,6 @@ class LevelManager {
                 "#P                              E                      #",
                 "########################################################"
             ],
-            // Level 11: Neon Steelworks — crumbling bridges & sweeping lasers
             [
                 "################################################################################################",
                 "#                                                                                              #",
@@ -268,7 +254,6 @@ class LevelManager {
                 "########################          ########################          ############################",
                 "################################################################################################"
             ],
-            // Level 12: Laser Grid — sky bridges over spike trenches
             [
                 "################################################################################################",
                 "#                                                                                              #",
@@ -283,7 +268,6 @@ class LevelManager {
                 "####################       #################         ###############       #####################",
                 "################################################################################################"
             ],
-            // Level 13: Gravity Foundry — zones, lasers and crumbling foundries
             [
                 "################################################################################################",
                 "#                                                                                              #",
@@ -298,10 +282,6 @@ class LevelManager {
                 "################       ###############       ###############       #############################",
                 "################################################################################################"
             ],
-            // Level 14: Crumb of Doubt — Golden Breadcrumbs sit on crumbling
-            // bridges over spike pits. But some "crumbs" are FAKE ('F')...
-            // and a hidden trigger ('T') drops a spike wall right in front of
-            // the exit bread.
             [
                 "################################################################",
                 "#      c        F        c        F        c        F      c   #",
@@ -314,8 +294,6 @@ class LevelManager {
                 "#P                                    T        B               #",
                 "################################################################"
             ],
-            // Level 15: Ceiling Crash — the floor looks safe, but invisible
-            // triggers drop spike guillotines from the ceiling mid-stride.
             [
                 "################################################################",
                 "#             F          F          F          F               #",
@@ -328,8 +306,6 @@ class LevelManager {
                 "#P                    T                T        B              #",
                 "################################################################"
             ],
-            // Level 16: Trust No One — the whole lane is littered with golden
-            // "crumbs". Almost every one of them is a trap.
             [
                 "################################################################",
                 "#  F    F    F    F    F    F    F    F    F    F    F    F    #",
@@ -342,8 +318,6 @@ class LevelManager {
                 "#P             T         ^^       T         B    ^^            #",
                 "################################################################"
             ],
-            // Level 17: Spike Rain — trigger zones drop spikes from above while
-            // the breadcrumbs scattered between the pillars deceive you.
             [
                 "################################################################",
                 "#    F         F         F         F         F         F       #",
@@ -356,8 +330,6 @@ class LevelManager {
                 "#P   T         T         T          T        B                 #",
                 "################################################################"
             ],
-            // Level 18: Guillotine Gauntlet — crumbling platforms over spikes,
-            // plus four hidden traps on the final stretch.
             [
                 "################################################################",
                 "#  F    F    F    F    F    F    F    F    F    F    F    F    #",
@@ -370,8 +342,6 @@ class LevelManager {
                 "#P        T         T          T         T       B             #",
                 "################################################################"
             ],
-            // Level 19: Last Laugh — the final troll gauntlet: gravity zones,
-            // fake crumbs everywhere and traps that cut off your escape route.
             [
                 "################################################################",
                 "#   c    F    c    F    c    F    c    F    c    F    c    F   #",
@@ -405,6 +375,193 @@ class LevelManager {
                 "#..##....###..P.###.....#",
                 "#S.....................S#",
                 "#########################"
+            ],
+            [
+                // Level 21 (The Gauntlet Begins)
+                // 14 height, 120 width
+                "########################################################################################################################",
+                "#                                                                               T                 T                    #",
+                "#        c                                                                                                             #",
+                "#       ###                                                                                                   B        #",
+                "#                      C C C        F     F           c                 V                 c                  ###       #",
+                "#                                  ^^^   ^^^         ###                                 ###                           #",
+                "#                                ####### #######                 C C C         C C C                                   #",
+                "#                                                                                                                      #",
+                "#           V                                          V                                         E      E              #",
+                "#        #######       E E E      E       E         #######                                   ^^^^^^^^^^^^             #",
+                "#                     ^^^^^^^    ^^^     ^^^                   F F F      F F F                                        #",
+                "#                                                             ^^^^^^^    ^^^^^^^                                       #",
+                "#P                  ###########################                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#",
+                "########################################################################################################################"
+            ],
+            [
+                // Level 22 (The Crumble Bridge)
+                // 14 height, 120 width
+                "########################################################################################################################",
+                "#                                                                          F F F F F        F F F F F                  #",
+                "#            T             T             T             T                   ^^^^^^^^^        ^^^^^^^^^                  #",
+                "#                                                                                                                      #",
+                "#       c             c             c             c             c                                                      #",
+                "#      ###           ###           ###           ###           ###                                             B       #",
+                "#                                                                                                             ###      #",
+                "#  V           V             V             V             V             V           V               V                   #",
+                "#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#",
+                "#C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.F.F.C.C.C.#",
+                "#......................................................................................................................#",
+                "#......................................................................................................................#",
+                "#P.....................................................................................................................#",
+                "########################################################################################################################"
+            ],
+            [
+                // Level 23 (Vent Highway)
+                // 14 height, 140 width
+                "############################################################################################################################################",
+                "#                                                                T                  T                  T                  T                #",
+                "#       c          c                                                                                                                       #",
+                "#      ###        ###          C C C                                                                                                       #",
+                "#                                                                                                                                  B       #",
+                "#                                                                                                                                 ###      #",
+                "#                                           C C C                                                                                          #",
+                "#                                                                                                                                          #",
+                "#               V                                        V                  V                  V                  V                        #",
+                "#            #######       E                           #######            #######            #######            #######                    #",
+                "#                         ^^^                                                                                                              #",
+                "#                        #####           E                                                                                                 #",
+                "#P                                      ^^^                                                                                                #",
+                "############################################################################################################################################"
+            ],
+            [
+                // Level 24 (Gravity Maze)
+                // 14 height, 120 width
+                "########################################################################################################################",
+                "#                                                                                                                      #",
+                "#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      #",
+                "#     z                                                                                                         z      #",
+                "#     z   E            E            E            E            E            E            E            E          z      #",
+                "#     z  ###          ###          ###          ###          ###          ###          ###          ###         z      #",
+                "#     z       ###          ###          ###          ###          ###          ###          ###          ###    z      #",
+                "#     z                                                                                                         z      #",
+                "#     z   V        V        V        V        V        V        V        V        V        V        V         z      ###",
+                "#     z^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^z      ###",
+                "#     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz      ###",
+                "#                                                                                                                      #",
+                "#P                                                                                                                B    #",
+                "########################################################################################################################"
+            ],
+            [
+                // Level 25 (The Great Deception)
+                // 14 height, 120 width
+                "########################################################################################################################",
+                "#                                                                                                                      #",
+                "#         c                    c                    c                    c                    c               B        #",
+                "#        ###                  ###                  ###                  ###                  ###             ###       #",
+                "#                                                                                                                      #",
+                "#                                                                                                                      #",
+                "#                                                                                                                      #",
+                "#                                                                                                                      #",
+                "#    T            T            T            T            T            T            T            T            T         #",
+                "#                                                                                                                      #",
+                "#          F                    F                    F                    F                    F                       #",
+                "#         ^^^                  ^^^                  ^^^                  ^^^                  ^^^                      #",
+                "#P      #######              #######              #######              #######              #######                    #",
+                "########################################################################################################################"
+            ],
+            [
+                // Level 26 (Enemy Surfing)
+                // 14 height, 140 width
+                "############################################################################################################################################",
+                "#                                                                                                                                          #",
+                "#                                           c                        c                        c                                            #",
+                "#                                          ###                      ###                      ###                                           #",
+                "#                                                                                                                                          #",
+                "#                                                                                                                                          #",
+                "#                                                                                                                                          #",
+                "#                                                                                                                                  B       #",
+                "#                                                                                                                                 ###      #",
+                "#                                                                                                                                          #",
+                "#           E      E      E      E      E      E      E      E      E      E      E      E      E      E      E      E      E            ###",
+                "#P         ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^    ^^^           ###",
+                "#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#",
+                "############################################################################################################################################"
+            ],
+            [
+                // Level 27 (Horizontal Hell)
+                // 14 height, 120 width
+                "########################################################################################################################",
+                "#                                                                                                                      #",
+                "#          F            F            F            F            F            F            F            F                #",
+                "#         ^^^          ^^^          ^^^          ^^^          ^^^          ^^^          ^^^          ^^^               #",
+                "#        #####        #####        #####        #####        #####        #####        #####        #####              #",
+                "#                                                                                                                      #",
+                "#                                                                                                               B      #",
+                "#                                                                                                              ###     #",
+                "#                                                                                                                      #",
+                "#    C C C        C C C        C C C        C C C        C C C        C C C        C C C        C C C                  #",
+                "#    ^^^^^        ^^^^^        ^^^^^        ^^^^^        ^^^^^        ^^^^^        ^^^^^        ^^^^^                  #",
+                "#                                                                                                                      #",
+                "#P                                                                                                                     #",
+                "########################################################################################################################"
+            ],
+            [
+                // Level 28 (Precision Sprint)
+                // 14 height, 130 width
+                "##################################################################################################################################",
+                "#                                                                                                                                #",
+                "#      T             T             T             T             T             T             T             T             T         #",
+                "#                                                                                                                                #",
+                "#                                                                                                                                #",
+                "#               c             c             c             c             c             c             c                            #",
+                "#              ###           ###           ###           ###           ###           ###           ###                           #",
+                "#                                                                                                                             B  #",
+                "#                                                                                                                            ### #",
+                "#       V             V             V             V             V             V             V             V                      #",
+                "#     #####         #####         #####         #####         #####         #####         #####         #####                    #",
+                "#                                                                                                                                #",
+                "#P                                                                                                                               #",
+                "##################################################################################################################################"
+            ],
+            [
+                // Level 29 (The Ultimate Exam)
+                // 14 height, 150 width
+                "######################################################################################################################################################",
+                "#                                                    T             T                                                                                 #",
+                "#            c                      F F F                                            F F F                                                           #",
+                "#           ###                    ^^^^^^^                                          ^^^^^^^                                                          #",
+                "#                                 #########                                        #########                                                         #",
+                "#                                               C C C         C C C                                                                               B  #",
+                "#                                               ^^^^^         ^^^^^                                                                              ### #",
+                "#                  z     z                                                                                                                           #",
+                "#                  z  E  z                                                                                                                           #",
+                "#      V           z ^^^ z                                                                    V             V             V             V            #",
+                "#    #####         z^^^^^z                                                                  #####         #####         #####         #####          #",
+                "#                  zzzzzzz                                                                                                                           #",
+                "#P                                                                                                                                                   #",
+                "######################################################################################################################################################"
+            ],
+            [
+                // Level 30: Boss Arena (Cat Chase)
+                // A 25x15 arena (800x480) that fits the locked camera exactly,
+                // so every switch stays on-screen. Open floor for the cat to
+                // chase; the low ledges give it hopping room. The two high
+                // corner switches are reached by flipping gravity onto the
+                // ceiling (or bouncing off the steam vents) and dropping
+                // back down through them.
+                "#########################",
+                "#S....c..........c.....S#",
+                "#.......................#",
+                "#.......................#",
+                "#.......................#",
+                "#.......................#",
+                "#.......................#",
+                "#...........B...........#",
+                "#.......................#",
+                "#..####...V...V...####..#",
+                "#.......................#",
+                "#.......................#",
+                "#.......................#",
+                "#P......................#",
+                "#S.....................S#",
+                "#########################"
             ]
         ];
     }
@@ -424,6 +581,7 @@ class LevelManager {
         this.crumbs = [];
         this.hazards = [];
         this.gravityZones = [];
+        this.steamVents = [];
         this.crumbles = [];
         this.crumbleMap = new Map();
         this.brokenGrid = [];
@@ -433,8 +591,8 @@ class LevelManager {
         this.fakeCrumbs = [];
         this.trapZones = [];
         this.droppedHazards = [];
-        // 1-5 retro, 6-10 sunset, 11-15 cyberpunk, 16-20 mothership.
-        this.theme = index >= 15 ? 'mothership' : (index >= 10 ? 'cyberpunk' : (index >= 5 ? 'sunset' : 'retro'));
+        // 1-5 retro, 6-10 sunset, 11-15 cyberpunk, 16-20 mothership, 21-30 kitchen
+        this.theme = index >= 20 ? 'kitchen' : (index >= 15 ? 'mothership' : (index >= 10 ? 'cyberpunk' : (index >= 5 ? 'sunset' : 'retro')));
 
         for (let y = 0; y < this.height; y++) {
             this.grid[y] = [];
@@ -453,8 +611,6 @@ class LevelManager {
                         height: this.tileSize
                     });
                 } else if (char === 'z') {
-                    // Forced-gravity zone: non-solid air that snaps gravity
-                    // back to normal and locks out flipping while inside.
                     this.grid[y][x] = 3;
                     this.gravityZones.push({
                         x: x * this.tileSize,
@@ -463,19 +619,31 @@ class LevelManager {
                         height: this.tileSize
                     });
                 } else if (char === 'C') {
-                    // Crumbling platform: solid until the goose stands on it,
-                    // then it trembles for 0.5s and collapses (reset on respawn).
                     this.grid[y][x] = 4;
                     const c = {
                         x: x * this.tileSize,
                         y: y * this.tileSize,
+                        width: this.tileSize,
+                        height: this.tileSize,
+                        state: 'idle',
+                        timer: 0,
+                        gridX: x,
+                        gridY: y,
                         broken: false,
                         tremble: 0
                     };
                     this.crumbles.push(c);
-                    this.crumbleMap.set(x + ',' + y, c);
+                    this.crumbleMap.set(`${x},${y}`, c);
+                } else if (char === 'V') {
+                    this.grid[y][x] = 0;
+                    this.steamVents.push({
+                        x: x * this.tileSize,
+                        y: y * this.tileSize,
+                        width: this.tileSize,
+                        height: this.tileSize
+                    });
                 } else {
-                    this.grid[y][x] = 0; // Air
+                    this.grid[y][x] = 0;
                     if (char === 'P') {
                         this.playerStart = { x: x * this.tileSize, y: y * this.tileSize };
                     } else if (char === 'B') {
@@ -547,7 +715,8 @@ class LevelManager {
         }
         const bcfg = this.bossConfigs[index];
         if (bcfg) {
-            this.boss = new Boss(bcfg.x, bcfg.y, this.height * this.tileSize);
+            const type = index === 29 ? 'cat' : 'frog';
+            this.boss = new Boss(bcfg.x, bcfg.y, this.height * this.tileSize, type);
         }
         return true;
     }
@@ -669,8 +838,9 @@ class LevelManager {
         const cyberpunk = this.theme === 'cyberpunk';
         const sunset = this.theme === 'sunset';
         const mothership = this.theme === 'mothership';
-        const tileImg = assetManager.getImage(mothership ? 'tileset_mothership' : (cyberpunk ? 'tileset_cyberpunk' : (sunset ? 'tileset_sunset' : 'tileset')));
-        const spikeImg = assetManager.getImage(mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes')));
+        const kitchen = this.theme === 'kitchen';
+        const tileImg = assetManager.getImage(kitchen ? 'tileset_kitchen' : (mothership ? 'tileset_mothership' : (cyberpunk ? 'tileset_cyberpunk' : (sunset ? 'tileset_sunset' : 'tileset'))));
+        const spikeImg = assetManager.getImage(kitchen ? 'spikes_kitchen' : (mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes'))));
 
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
@@ -741,10 +911,37 @@ class LevelManager {
             }
             ctx.restore();
         }
+        // Steam Vents
+        if (this.steamVents && this.steamVents.length > 0) {
+            ctx.save();
+            for (const vent of this.steamVents) {
+                const vx = vent.x - camera.x;
+                const vy = vent.y - camera.y;
+                if (vx + vent.width < 0 || vx > camera.width || vy + vent.height < 0 || vy > camera.height) continue;
+                
+                // Draw vent grate
+                ctx.fillStyle = '#d1d5db'; // Chrome
+                ctx.fillRect(vx, vy + vent.height - 8, vent.width, 8);
+                ctx.fillStyle = '#4b5563'; // Darker slots
+                for (let i = 2; i < vent.width; i += 6) {
+                    ctx.fillRect(vx + i, vy + vent.height - 6, 2, 4);
+                }
+                // Steam visual effect
+                ctx.fillStyle = 'rgba(254, 243, 199, 0.4)'; // Creamy steam
+                ctx.beginPath();
+                ctx.ellipse(vx + vent.width / 2, vy + vent.height / 2, vent.width / 2, vent.height / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
 
         // Spikes spawned by traps ('T' zones + triggered 'F' crumbs).
         if (this.droppedHazards.length > 0) {
-            const spikeImg = assetManager.getImage(mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes')));
+            const kitchen = this.theme === 'kitchen';
+            const cyberpunk = this.theme === 'cyberpunk';
+            const sunset = this.theme === 'sunset';
+            const mothership = this.theme === 'mothership';
+            const spikeImg = assetManager.getImage(kitchen ? 'spikes_kitchen' : (mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes'))));
             for (const hz of this.droppedHazards) {
                 const hx = hz.x - camera.x;
                 const hy = hz.y - camera.y;
