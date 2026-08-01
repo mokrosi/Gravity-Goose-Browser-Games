@@ -19,7 +19,7 @@ class LevelManager {
         this.fakeCrumbs = []; // 'F' troll crumbs: look like Golden Breadcrumbs, turn deadly
         this.trapZones = []; // 'T' invisible trigger zones: spawn hidden spike traps
         this.droppedHazards = []; // spikes spawned at runtime by traps (drawn + reset)
-        this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10) or 'cyberpunk' (11-15)
+        this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10), 'cyberpunk' (11-15), 'mothership' (16-20)
         this.playerStart = { x: 50, y: 50 };
 
         // Target par times in seconds for 20 levels (indices 0 to 19)
@@ -433,8 +433,8 @@ class LevelManager {
         this.fakeCrumbs = [];
         this.trapZones = [];
         this.droppedHazards = [];
-        // 1-5 retro, 6-10 sunset, 11-15 cyberpunk.
-        this.theme = index >= 10 ? 'cyberpunk' : (index >= 5 ? 'sunset' : 'retro');
+        // 1-5 retro, 6-10 sunset, 11-15 cyberpunk, 16-20 mothership.
+        this.theme = index >= 15 ? 'mothership' : (index >= 10 ? 'cyberpunk' : (index >= 5 ? 'sunset' : 'retro'));
 
         for (let y = 0; y < this.height; y++) {
             this.grid[y] = [];
@@ -668,8 +668,9 @@ class LevelManager {
 
         const cyberpunk = this.theme === 'cyberpunk';
         const sunset = this.theme === 'sunset';
-        const tileImg = assetManager.getImage(cyberpunk ? 'tileset_cyberpunk' : (sunset ? 'tileset_sunset' : 'tileset'));
-        const spikeImg = assetManager.getImage(cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes'));
+        const mothership = this.theme === 'mothership';
+        const tileImg = assetManager.getImage(mothership ? 'tileset_mothership' : (cyberpunk ? 'tileset_cyberpunk' : (sunset ? 'tileset_sunset' : 'tileset')));
+        const spikeImg = assetManager.getImage(mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes')));
 
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
@@ -743,7 +744,7 @@ class LevelManager {
 
         // Spikes spawned by traps ('T' zones + triggered 'F' crumbs).
         if (this.droppedHazards.length > 0) {
-            const spikeImg = assetManager.getImage(cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes'));
+            const spikeImg = assetManager.getImage(mothership ? 'spikes_mothership' : (cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes')));
             for (const hz of this.droppedHazards) {
                 const hx = hz.x - camera.x;
                 const hy = hz.y - camera.y;

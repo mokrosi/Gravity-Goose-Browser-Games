@@ -96,9 +96,10 @@ for (let i = 10; i < 13; i++) {
 }
 
 // 6. Levels 14-19: Level Devil troll gauntlets with fake crumbs + trigger traps
+//    (16-19 use the mothership palette; 14-15 are still cyberpunk)
 for (let i = 13; i < 19; i++) {
     lm.loadLevel(i);
-    assert(lm.theme === 'cyberpunk', `L${i + 1} uses the cyberpunk theme`);
+    assert(lm.theme === (i < 15 ? 'cyberpunk' : 'mothership'), `L${i + 1} uses the ${i < 15 ? 'cyberpunk' : 'mothership'} theme`);
     assert(lm.flipLimit === true, `L${i + 1} enforces the flip limit`);
     assert(lm.fakeCrumbs.length > 0, `L${i + 1} contains fake crumbs ('F')`);
     assert(lm.trapZones.length > 0, `L${i + 1} contains trigger zones ('T')`);
@@ -108,10 +109,10 @@ for (let i = 13; i < 19; i++) {
     assert(lm.switches.length === 0, `L${i + 1} has no boss switches`);
 }
 
-// 7. Level 20: single-screen boss arena with exactly 4 corner switches
+// 7. Level 20: single-screen mothership boss arena with exactly 4 corner switches
 {
     lm.loadLevel(19);
-    assert(lm.theme === 'cyberpunk', 'L20 uses the cyberpunk theme');
+    assert(lm.theme === 'mothership', 'L20 uses the mothership theme');
     assert(lm.isBossLevel === true, 'L20 is a boss level');
     assert(lm.boss !== null, 'L20 loads a boss');
     assert(lm.switches.length === 4, 'L20 has exactly 4 overload switches');

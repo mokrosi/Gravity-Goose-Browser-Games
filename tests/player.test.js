@@ -85,7 +85,7 @@ const soundStub = {
     playCollect() {}, playWin() {}, playHurt() {}, playStart() {}, playBlink() {}, playReset() {},
 };
 const particleStub = {
-    emitGravityFlip() {}, emitFootstep() {}, emitCrumbCollect() {},
+    emitGravityFlip() {}, emitFootstep() {}, emitDust() {}, emitCrumbCollect() {},
     emitBreadCollect() {}, emitHurt() {}, emitBlink() {},
 };
 

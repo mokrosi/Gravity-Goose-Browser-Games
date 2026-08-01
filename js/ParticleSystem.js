@@ -97,6 +97,17 @@ class ParticleSystem {
         }
     }
 
+    emitDust(x, y, amount = 6) {
+        // White/gray dust burst kicked up on jumps, hard landings & flips.
+        // Particles fly outward and curl upward (with a touch of randomness).
+        for (let i = 0; i < amount; i++) {
+            const vx = (Math.random() - 0.5) * 110;
+            const vy = -15 - Math.random() * 70;
+            const color = Math.random() > 0.5 ? '#FFFFFF' : '#94A3B8';
+            this.particles.push(new Particle(x, y, vx, vy, color, 2 + Math.random() * 2.5, 0.3 + Math.random() * 0.25, 'spark'));
+        }
+    }
+
     emitBlink(x, y, dir) {
         // Cyan warp ring bursting at each end of the teleport
         for (let i = 0; i < 10; i++) {

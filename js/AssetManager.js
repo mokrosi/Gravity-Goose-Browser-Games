@@ -17,6 +17,9 @@ class AssetManager {
         // Cyberpunk palette for Levels 11-15
         this.images['tileset_cyberpunk'] = SpriteGenerator.generateTileSprite('cyberpunk');
         this.images['spikes_cyberpunk'] = SpriteGenerator.generateSpikeSprite('cyberpunk');
+        // Mothership palette for Levels 16-20
+        this.images['tileset_mothership'] = SpriteGenerator.generateTileSprite('mothership');
+        this.images['spikes_mothership'] = SpriteGenerator.generateSpikeSprite('mothership');
     }
 
     loadImage(key, src) {

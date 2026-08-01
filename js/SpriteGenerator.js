@@ -228,20 +228,21 @@ class SpriteGenerator {
         return canvas;
     }
 
-    // theme: 'retro' (levels 1-5), 'sunset' (levels 6-10) or 'cyberpunk' (11-15).
+    // theme: 'retro' (1-5), 'sunset' (6-10), 'cyberpunk' (11-15) or 'mothership' (16-20).
     static generateTileSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
+        const mothership = theme === 'mothership';
         const cyberpunk = theme === 'cyberpunk';
         const sunset = theme === 'sunset';
-        const base = cyberpunk ? '#17002e' : (sunset ? '#431407' : '#1E1B4B');
-        const border = cyberpunk ? '#4a044e' : (sunset ? '#7C2D12' : '#312E81');
-        const neon = cyberpunk ? '#e11d48' : (sunset ? '#F59E0B' : '#06B6D4');
-        const neonGlow = cyberpunk ? '#f43f5e' : (sunset ? '#FBBF24' : '#38BDF8');
-        const rivet = cyberpunk ? '#a78bfa' : (sunset ? '#FDBA74' : '#64748B');
+        const base = mothership ? '#0a1f1a' : (cyberpunk ? '#17002e' : (sunset ? '#431407' : '#1E1B4B'));
+        const border = mothership ? '#134e3a' : (cyberpunk ? '#4a044e' : (sunset ? '#7C2D12' : '#312E81'));
+        const neon = mothership ? '#34d399' : (cyberpunk ? '#e11d48' : (sunset ? '#F59E0B' : '#06B6D4'));
+        const neonGlow = mothership ? '#6ee7b7' : (cyberpunk ? '#f43f5e' : (sunset ? '#FBBF24' : '#38BDF8'));
+        const rivet = mothership ? '#a7f3d0' : (cyberpunk ? '#a78bfa' : (sunset ? '#FDBA74' : '#64748B'));
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;
@@ -279,18 +280,19 @@ class SpriteGenerator {
         return canvas;
     }
 
-    // theme: 'retro' (levels 1-5), 'sunset' (levels 6-10) or 'cyberpunk' (11-15).
+    // theme: 'retro' (1-5), 'sunset' (6-10), 'cyberpunk' (11-15) or 'mothership' (16-20).
     static generateSpikeSprite(theme = 'retro') {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
         const ctx = canvas.getContext('2d');
 
+        const mothership = theme === 'mothership';
         const cyberpunk = theme === 'cyberpunk';
         const sunset = theme === 'sunset';
-        const metalDark = cyberpunk ? '#881337' : (sunset ? '#9A3412' : '#475569');
-        const metalLight = cyberpunk ? '#fb7185' : (sunset ? '#FB923C' : '#94A3B8');
-        const tipRed = cyberpunk ? '#e11d48' : (sunset ? '#F97316' : '#EF4444');
+        const metalDark = mothership ? '#064e3b' : (cyberpunk ? '#881337' : (sunset ? '#9A3412' : '#475569'));
+        const metalLight = mothership ? '#10b981' : (cyberpunk ? '#fb7185' : (sunset ? '#FB923C' : '#94A3B8'));
+        const tipRed = mothership ? '#d1fae5' : (cyberpunk ? '#e11d48' : (sunset ? '#F97316' : '#EF4444'));
 
         const p = (x, y, color) => {
             ctx.fillStyle = color;

@@ -35,6 +35,15 @@ class Player extends Entity {
         this.flipBufferTimer = 0;   // queued flip, fires on landing if still active
         this.flipLimit = true;      // Level 6+: only one flip per airtime
         this.inGravityZone = false; // inside a forced-gravity zone
+
+        // Squash & stretch: landing squashes (0.15s), jumps/flips stretch.
+        this.squashTimer = 0;
+        this.stretchTimer = 0;
+    }
+
+    // Contact edge (feet) in world px, accounting for inverted gravity.
+    get feetY() {
+        return this.gravitySign > 0 ? this.y + this.height + 2 : this.y - 2;
     }
 
     // Levels 6-10 restrict flips to once per airtime; Levels 1-5 don't.
@@ -84,6 +93,7 @@ class Player extends Entity {
     }
 
     flipGravity(soundManager, particleSystem) {
+        const oldSign = this.gravitySign;
         this.gravity = -this.gravity;
         this.onGround = false;
         this.onCeiling = false;
@@ -92,6 +102,7 @@ class Player extends Entity {
         this.wallDir = 0;
         if (this.flipLimit) this.flipsInAir = 1; // every flip launches the goose airborne
         this.vy = this.gravitySign * 80;
+        this.stretchTimer = 0.12;
         if (soundManager) soundManager.playFlip();
         if (particleSystem) {
             particleSystem.emitGravityFlip(
@@ -99,6 +110,9 @@ class Player extends Entity {
                 this.y + this.height / 2,
                 this.gravitySign
             );
+            // Dust kicked up off the contact edge the goose just left.
+            const footY = oldSign > 0 ? this.y + this.height + 2 : this.y - 2;
+            particleSystem.emitDust(this.x + this.width / 2, footY, 4);
         }
     }
 
@@ -117,6 +131,10 @@ class Player extends Entity {
 
     update(dt, input, level, soundManager, particleSystem) {
         if (this.isDead) return;
+
+        // --- Squash & stretch timers decay ---
+        this.squashTimer = Math.max(0, this.squashTimer - dt);
+        this.stretchTimer = Math.max(0, this.stretchTimer - dt);
 
         // --- Blink i-frames: hazards & enemies ignore the goose while active ---
         this.invincibleTimer = Math.max(0, this.invincibleTimer - dt);
@@ -211,7 +229,11 @@ class Player extends Entity {
             this.vy = -this.gravitySign * Player.JUMP_VELOCITY;
             this.jumpBufferTimer = 0;
             this.coyoteTimer = 0;
+            this.stretchTimer = 0.14;
             if (soundManager) soundManager.playJump();
+            if (particleSystem) {
+                particleSystem.emitDust(this.x + this.width / 2, this.feetY, 7);
+            }
         }
 
         // --- Wall jump: burst away from the wall + up from the slide ---
@@ -221,7 +243,11 @@ class Player extends Entity {
             this.jumpBufferTimer = 0;
             this.coyoteTimer = 0;
             this.wallSliding = false;
+            this.stretchTimer = 0.14;
             if (soundManager) soundManager.playJump();
+            if (particleSystem) {
+                particleSystem.emitDust(this.x + this.width / 2, this.feetY, 6);
+            }
         }
 
         // --- Variable jump height: releasing early cuts the ascent ---
@@ -240,9 +266,19 @@ class Player extends Entity {
         }
 
         // --- Axis-separated collision resolution ---
+        const wasAirborne = !this.onGround;
+        const fallSpeed = Math.abs(this.vy);
         Physics.resolveX(this, level, dt);
         Physics.resolveY(this, level, dt);
         Physics.enforceBounds(this, level);
+
+        // --- Hard landing: squash for 150ms + dust burst at the contact edge ---
+        if (wasAirborne && (this.onGround || this.onCeiling) && fallSpeed > 220) {
+            this.squashTimer = 0.15;
+            if (particleSystem) {
+                particleSystem.emitDust(this.x + this.width / 2, this.feetY, 8);
+            }
+        }
 
         // --- Walk cycle for the dt-driven running bob ---
         if (Math.abs(this.vx) > 0 && this.onGround) {
@@ -391,8 +427,22 @@ class Player extends Entity {
         const scaleX = this.facingRight ? 1 : -1;
         const scaleY = this.gravity > 0 ? 1 : -1;
 
+        // Squash & stretch: landing flattens the goose (wider + shorter),
+        // jumps/flips elongate it (taller + thinner), easing out over time.
+        let widthMul = 1;
+        let heightMul = 1;
+        if (this.squashTimer > 0) {
+            const t = this.squashTimer / 0.15;
+            widthMul = 1 + 0.22 * t;
+            heightMul = 1 - 0.18 * t;
+        } else if (this.stretchTimer > 0) {
+            const t = this.stretchTimer / 0.15;
+            widthMul = 1 - 0.14 * t;
+            heightMul = 1 + 0.18 * t;
+        }
+
         ctx.translate(drawX + this.width / 2, drawY + this.height / 2);
-        ctx.scale(scaleX, scaleY);
+        ctx.scale(scaleX * widthMul, scaleY * heightMul);
         ctx.drawImage(img, -16, -16, 32, 32);
         ctx.restore();
     }

@@ -57,6 +57,7 @@
                     <span class="hud-item" title="Bread"><span class="hud-ico" aria-hidden="true">🍞</span><span id="hud-score">0</span></span>
                     <span class="hud-item" title="Golden Breadcrumbs"><span class="hud-ico" aria-hidden="true">✨</span><span id="hud-crumbs">0/0</span></span>
                     <span class="hud-item" title="Time"><span class="hud-ico" aria-hidden="true">⏱</span><span id="hud-time">00:00:000</span></span>
+                    <span class="hud-item hud-practice-badge hidden" id="hud-practice-badge">PRACTICE</span>
                 </div>
                 <div class="hud-bars" title="Ability cooldowns">
                     <div class="hud-bar" id="hud-flip-item" title="Gravity flip"><span class="hud-bar-fill flip" id="hud-flip-fill"></span></div>
@@ -176,10 +177,14 @@
                 <div id="victory-screen" class="screen hidden">
                     <h1 class="title win">VICTORY!</h1>
                     <p class="subtitle">You recovered all the bread & defeated the frog armada!</p>
+                    <canvas id="victory-canvas" width="260" height="180" aria-label="The goose happily eats the recovered sandwich"></canvas>
                     <p class="subtitle">Final Time: <span id="final-time" class="highlight">00:00:000</span></p>
+                    <p class="subtitle">Bread Collected: <span id="final-bread" class="highlight">0</span></p>
                     <p class="subtitle">Breadcrumbs Collected: <span id="final-crumbs" class="highlight">0/0</span> (<span id="final-percent" class="highlight">0%</span>)</p>
+                    <p class="subtitle">Total Deaths: <span id="final-deaths" class="highlight">0</span></p>
                     <p class="subtitle"><span id="final-best" class="highlight"></span></p>
-                    <button id="btn-play-again" class="btn">PLAY AGAIN</button>
+                    <button id="btn-speedrun" class="btn">SPEEDRUN MODE ⚡</button>
+                    <button id="btn-play-again" class="btn btn-ghost">PLAY AGAIN</button>
                     <button id="btn-share-victory" class="btn btn-ghost">SHARE RUN 🚀</button>
                 </div>
 
@@ -226,6 +231,7 @@
     <script src="js/MechanicToasts.js"></script>
     <script src="js/HintSystem.js"></script>
     <script src="js/Achievements.js"></script>
+    <script src="js/VictoryCinematic.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/main.js"></script>
 </body>

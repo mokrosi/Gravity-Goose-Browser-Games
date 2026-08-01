@@ -45,7 +45,7 @@ class HintSystem {
 
         // 2. Jump Hold hint (Level 1 when airborne)
         if (save.hasSeenHint('move') && !save.hasSeenHint('jumpHold') && levelIndex === 0) {
-            if (player.isAirborne) {
+            if (!player.onGround) {
                 if (this.activeKey !== 'jumpHold') {
                     this.show('jumpHold', 'Hold JUMP for Full Height');
                 }
@@ -73,7 +73,7 @@ class HintSystem {
                 if (this.activeKey !== 'blink') {
                     this.show('blink', 'SHIFT / BLINK to Dash Hazards');
                 }
-                if (player.isBlinking) {
+                if (player.isInvincible) {
                     save.markHintSeen('blink');
                     this.hide();
                 }
@@ -82,18 +82,24 @@ class HintSystem {
             return;
         }
 
-        // 4. Flip hint (when under flip tile or in gravity zone)
+        // 4. Flip hint (when a spike tile is directly above/below or in a gravity zone)
         if (!save.hasSeenHint('flip')) {
             const levelMgr = this.game.levelManager;
             const gx = Math.floor((player.x + player.width / 2) / levelMgr.tileSize);
             const gy = Math.floor(player.y / levelMgr.tileSize);
-            const underFlipTile = levelMgr.getTile(gx, gy - 1) === '^' || levelMgr.getTile(gx, gy + 1) === '^';
+            const tileAt = (tx, ty) => {
+                if (ty < 0 || ty >= levelMgr.height || tx < 0 || tx >= levelMgr.width) return null;
+                return levelMgr.grid[ty][tx];
+            };
+            const spikeAbove = tileAt(gx, gy - 1) === 2 || tileAt(gx - 1, gy - 1) === 2 || tileAt(gx + 1, gy - 1) === 2;
+            const spikeBelow = tileAt(gx, gy + 1) === 2 || tileAt(gx - 1, gy + 1) === 2 || tileAt(gx + 1, gy + 1) === 2;
+            const underFlipTile = spikeAbove || spikeBelow;
 
             if (underFlipTile || levelMgr.gravityZones.length > 0) {
                 if (this.activeKey !== 'flip') {
                     this.show('flip', 'SPACE / Tap Canvas to Flip Gravity');
                 }
-                if (player.isGravityFlipped) {
+                if (player.gravitySign < 0) {
                     save.markHintSeen('flip');
                     this.hide();
                 }

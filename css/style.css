@@ -474,6 +474,19 @@ a {
     color: var(--neon-yellow);
 }
 
+/* Endgame victory cinematic: pixel-art goose eats the recovered sandwich */
+#victory-canvas {
+    display: block;
+    width: 260px;
+    height: 180px;
+    margin: 0 auto 14px;
+    image-rendering: pixelated;
+    background: rgba(2, 6, 23, 0.55);
+    border: 2px solid rgba(250, 204, 21, 0.35);
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(250, 204, 21, 0.15);
+}
+
 /* Controls Info Card */
 .controls-card {
     background: rgba(30, 41, 59, 0.8);
@@ -598,6 +611,7 @@ a {
     gap: 8px;
     width: 92px;
     height: 92px;
+    position: relative;
     font-family: 'Press Start 2P', monospace;
     background: var(--neon-blue);
     color: #090d16;
@@ -635,6 +649,58 @@ a {
 
 .level-btn.cyberpunk:hover:not(:disabled) {
     background-color: #f43f5e;
+}
+
+/* Levels 16-20 preview the mothership palette */
+.level-btn.mothership:not(.locked) {
+    background: linear-gradient(180deg, #10b981, #065f46);
+    border-bottom-color: #134e3a;
+    box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
+}
+
+.level-btn.mothership:hover:not(:disabled) {
+    background-color: #34d399;
+}
+
+/* Practice-Mode chip on unlocked level buttons: secondary, stakes-free action */
+.level-practice {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+    font-size: 10px;
+    text-align: center;
+    color: #090d16;
+    background: #facc15;
+    border: 1px solid #a16207;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 0.1s ease;
+}
+
+.level-practice:hover {
+    transform: scale(1.15);
+}
+
+/* Persistent HUD badge shown while a Practice run is active */
+.hud-practice-badge {
+    color: #090d16;
+    background: #facc15;
+    border: 2px solid #a16207;
+    border-radius: 4px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 4px 6px;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+    animation: practicePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes practicePulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(250, 204, 21, 0.4); }
+    50% { box-shadow: 0 0 14px rgba(250, 204, 21, 0.9); }
 }
 
 .level-btn.locked {

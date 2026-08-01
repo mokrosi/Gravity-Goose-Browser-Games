@@ -20,6 +20,7 @@ class Game {
         this.mechanicToasts = new MechanicToasts(this);
         this.hintSystem = new HintSystem(this);
         this.achievements = new AchievementsManager(this);
+        this.victoryCinematic = new VictoryCinematic('victory-canvas');
 
         this.player = null;
         
@@ -39,6 +40,10 @@ class Game {
         this.levelTimer = 0;
         this.totalTimer = 0;
 
+        // Practice Mode: stakes-free run of an already-unlocked level.
+        // Deaths never end the run and a clear never writes to the save file.
+        this.practiceRun = false;
+
         // Persistent progress & settings (localStorage via SaveManager)
         this.save = new SaveManager();
 
@@ -50,6 +55,10 @@ class Game {
         this.crumbTotal = 0;
         this.totalCrumbCollected = 0;
         this.totalCrumbs = 0;
+
+        // Run stats shown on the Final Victory screen
+        this.totalDeaths = 0;
+        this.totalBread = 0;
 
         // Best-run ghost replay
         this.ghost = new Ghost();
@@ -99,6 +108,10 @@ class Game {
         bind('btn-next-level', 'click', () => this.nextLevel());
         bind('btn-restart', 'click', () => this.retryLevel());
         bind('btn-play-again', 'click', () => this.startGame());
+        bind('btn-speedrun', 'click', () => {
+            this.requestImmersiveMode();
+            this.startLevel(0);
+        });
         bind('btn-achievements', 'click', () => this.openAchievements('start-screen'));
         bind('btn-achievements-back', 'click', () => this.achievementsBack());
         bind('btn-reset-records', 'click', () => this.resetRecords());
@@ -157,6 +170,7 @@ class Game {
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
         this.input.clear();
+        if (this.victoryCinematic) this.victoryCinematic.stop();
     }
 
     startGame() {
@@ -189,7 +203,7 @@ class Game {
             const unlocked = this.save.isLevelUnlocked(i);
             const best = this.save.getBestTime(i);
             const btn = document.createElement('button');
-            const chapterClass = i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : '');
+            const chapterClass = i >= 15 ? ' mothership' : (i >= 10 ? ' cyberpunk' : (i >= 5 ? ' sunset' : ''));
             btn.className = 'level-btn' + chapterClass + (unlocked ? '' : ' locked');
             btn.disabled = !unlocked;
             const medal = unlocked ? this.save.getMedalGlyph(i, this.levelManager) : '';
@@ -199,6 +213,16 @@ class Game {
                 `<span class="level-best">${unlocked ? (best !== null ? this.formatTime(best) : '—') : '🔒'}</span>`;
             if (unlocked) {
                 btn.addEventListener('click', () => this.startLevel(i));
+                // Secondary action: stakes-free Practice run of this level.
+                const chip = document.createElement('span');
+                chip.className = 'level-practice';
+                chip.title = 'Practice Mode — deaths never end the run, clear is not saved';
+                chip.innerText = 'P';
+                chip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.startPractice(i);
+                });
+                btn.appendChild(chip);
             }
             grid.appendChild(btn);
         }
@@ -211,6 +235,7 @@ class Game {
     // so a full speedrun always starts from Level 1.
     startLevel(index) {
         if (!this.save.isLevelUnlocked(index)) return;
+        this.practiceRun = false;
         this.soundManager.init();
         this.soundManager.playStart();
         this.soundManager.startMusic();
@@ -222,11 +247,38 @@ class Game {
         this.totalTimer = 0;
         this.totalCrumbCollected = 0;
         this.totalCrumbs = 0;
+        this.totalDeaths = 0;
+        this.totalBread = 0;
+        this.loadLevel();
+    }
+
+    // Practice Mode: same as startLevel but deaths never trigger Game Over
+    // and a clear never writes best times / medals / ghosts / achievements.
+    startPractice(index) {
+        if (!this.save.isLevelUnlocked(index)) return;
+        this.practiceRun = true;
+        this.soundManager.init();
+        this.soundManager.playStart();
+        this.soundManager.startMusic();
+        this.ghost.load(this.save.getGhost(index));
+        this.ghost.startRecording();
+        this.score = 0;
+        this.lives = this.save.getAssistMode() ? 5 : 3;
+        this.currentLevel = index;
+        this.totalTimer = 0;
+        this.totalCrumbCollected = 0;
+        this.totalCrumbs = 0;
+        this.totalDeaths = 0;
+        this.totalBread = 0;
         this.loadLevel();
     }
 
     retryLevel() {
-        this.startLevel(this.currentLevel);
+        if (this.practiceRun) {
+            this.startPractice(this.currentLevel);
+        } else {
+            this.startLevel(this.currentLevel);
+        }
     }
 
     // Builds the player configured for the current level's difficulty rules.
@@ -268,8 +320,8 @@ class Game {
         }
     }
 
-    // Final Victory screen (reached after Level 15's boss, or via the old
-    // fall-through when the next level index does not exist).
+    // Final Victory screen (reached after defeating the Level 20 boss, or via
+    // the fall-through when the next level index does not exist).
     showVictory() {
         this.state = 'VICTORY';
         this.soundManager.playWin();
@@ -281,20 +333,28 @@ class Game {
         document.getElementById('final-time').innerText = this.formatTime(this.totalTimer);
         document.getElementById('final-crumbs').innerText = `${this.totalCrumbCollected}/${this.totalCrumbs}`;
         document.getElementById('final-percent').innerText = `${percent}%`;
+        document.getElementById('final-bread').innerText = this.totalBread;
+        document.getElementById('final-deaths').innerText = this.totalDeaths;
 
         const bestEl = document.getElementById('final-best');
-        const newBest = this.save.setBestTotal(this.totalTimer);
-        if (newBest) {
-            bestEl.innerText = 'NEW BEST TOTAL TIME!';
-            bestEl.classList.add('best-flash');
-        } else {
-            bestEl.innerText = `Best Total: ${this.formatTime(this.save.getBestTotal())}`;
+        if (this.practiceRun) {
+            bestEl.innerText = 'PRACTICE CLEAR — NOT SAVED';
             bestEl.classList.remove('best-flash');
+        } else {
+            const newBest = this.save.setBestTotal(this.totalTimer);
+            if (newBest) {
+                bestEl.innerText = 'NEW BEST TOTAL TIME!';
+                bestEl.classList.add('best-flash');
+            } else {
+                bestEl.innerText = `Best Total: ${this.formatTime(this.save.getBestTotal())}`;
+                bestEl.classList.remove('best-flash');
+            }
         }
 
         this.showScreen('victory-screen');
         document.getElementById('hud').classList.add('hidden');
         this.touchControls.hide();
+        this.victoryCinematic.start();
     }
 
     pauseGame() {
@@ -313,6 +373,7 @@ class Game {
 
     quitToMenu() {
         this.state = 'START';
+        this.practiceRun = false;
         this.soundManager.stopMusic();
         this.levelManager.theme = 'retro';
         this.showScreen('start-screen');
@@ -321,6 +382,12 @@ class Game {
     }
 
     nextLevel() {
+        // Practice runs never unlock progression: if the next level isn't
+        // actually unlocked yet, re-practice the current one instead.
+        if (this.practiceRun && !this.save.isLevelUnlocked(this.currentLevel + 1)) {
+            this.startPractice(this.currentLevel);
+            return;
+        }
         this.currentLevel++;
         this.loadLevel();
     }
@@ -420,7 +487,14 @@ class Game {
         document.getElementById('hud-level').innerText = this.currentLevel + 1;
         document.getElementById('hud-score').innerText = this.score;
         document.getElementById('hud-crumbs').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
-        document.getElementById('hud-lives').innerText = '❤️'.repeat(this.lives);
+        document.getElementById('hud-lives').innerText = '❤️'.repeat(Math.max(0, Math.min(5, this.lives)));
+
+        // Persistent "PRACTICE MODE" badge so it's always clear the run
+        // doesn't count toward best times, medals or achievements.
+        const practiceBadge = document.getElementById('hud-practice-badge');
+        if (practiceBadge) {
+            practiceBadge.classList.toggle('hidden', !this.practiceRun);
+        }
 
         // Boss-fight overload tracker (only visible on the Level 20 arena).
         const boss = this.levelManager.boss;
@@ -603,12 +677,13 @@ class Game {
             this.soundManager.playHurt();
             this.soundManager.playReset();
             this.particleSystem.emitHurt(this.player.x + 14, this.player.y + 14);
-            this.lives--;
+            if (!this.practiceRun) this.lives--;
+            this.totalDeaths++;
             this.screenShake();
             this.flashScreen();
             this.updateHUD();
 
-            if (this.lives <= 0) {
+            if (this.lives <= 0 && !this.practiceRun) {
                 this.state = 'GAME_OVER';
                 this.soundManager.stopMusic();
                 this.showScreen('game-over-screen');
@@ -662,8 +737,12 @@ class Game {
             }
             if (this.bossDeathTimer <= 0 && !this.bossVictoryShown) {
                 this.bossVictoryShown = true;
-                this.save.setBestTime(this.currentLevel, this.levelTimer);
-                this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                if (!this.practiceRun) {
+                    this.save.setBestTime(this.currentLevel, this.levelTimer);
+                    this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                } else {
+                    this.ghost.stopRecording();
+                }
                 this.showVictory();
                 return;
             }
@@ -699,6 +778,7 @@ class Game {
                 if (Physics.checkCollision(this.player, item)) {
                     item.collected = true;
                     this.score++;
+                    this.totalBread++;
                     this.soundManager.playCollect();
                     this.particleSystem.emitBreadCollect(item.x + 12, item.y + 12);
                     this.updateHUD();
@@ -715,7 +795,7 @@ class Game {
                 crumb.collected = true;
                 this.crumbCollected++;
                 this.totalCrumbCollected++;
-                this.save.addCrumb();
+                if (!this.practiceRun) this.save.addCrumb();
                 this.soundManager.playCrumb();
                 this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
                 this.player.rechargeFlip(); // golden breadcrumb recharges the flip
@@ -740,26 +820,38 @@ class Game {
             document.getElementById('level-time').innerText = this.formatTime(this.levelTimer);
 
             const bestEl = document.getElementById('level-best');
-            const newBest = this.save.setBestTime(this.currentLevel, this.levelTimer);
-            if (newBest) {
-                bestEl.innerText = 'NEW BEST TIME!';
-                bestEl.classList.add('best-flash');
-                this.soundManager.playBest();
-                // Persist this run as the ghost replay for future attempts.
-                this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
-            } else {
-                this.ghost.stopRecording();
-                bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
+            if (this.practiceRun) {
+                // Practice clears never touch best times, ghosts, medals,
+                // achievements or level unlocks.
+                bestEl.innerText = 'PRACTICE CLEAR — NOT SAVED';
                 bestEl.classList.remove('best-flash');
+                this.ghost.stopRecording();
+            } else {
+                const newBest = this.save.setBestTime(this.currentLevel, this.levelTimer);
+                if (newBest) {
+                    bestEl.innerText = 'NEW BEST TIME!';
+                    bestEl.classList.add('best-flash');
+                    this.soundManager.playBest();
+                    // Persist this run as the ghost replay for future attempts.
+                    this.save.setGhost(this.currentLevel, this.ghost.stopRecording());
+                } else {
+                    this.ghost.stopRecording();
+                    bestEl.innerText = `Best Time: ${this.formatTime(this.save.getBestTime(this.currentLevel))}`;
+                    bestEl.classList.remove('best-flash');
+                }
+                // Completing a level unlocks the next one in the level select.
+                this.save.unlockLevel(this.currentLevel + 1);
+                this.achievements.checkAll();
             }
-            // Completing a level unlocks the next one in the level select.
-            this.save.unlockLevel(this.currentLevel + 1);
-            this.achievements.checkAll();
 
             const medalEl = document.getElementById('level-medal');
             if (medalEl) {
-                const medalGlyph = this.save.getMedalGlyph(this.currentLevel, this.levelManager);
-                medalEl.innerText = medalGlyph ? `Medal Earned: ${medalGlyph}` : '';
+                if (this.practiceRun) {
+                    medalEl.innerText = '';
+                } else {
+                    const medalGlyph = this.save.getMedalGlyph(this.currentLevel, this.levelManager);
+                    medalEl.innerText = medalGlyph ? `Medal Earned: ${medalGlyph}` : '';
+                }
             }
 
             this.soundManager.stopMusic();
@@ -772,12 +864,13 @@ class Game {
 
     drawParallaxBackground() {
         // Deep Space Background with Parallax Starfield & Synth Grid.
-        // 6-10 shift to sunset/amber; 11-15 to neon cyberpunk magenta.
+        // 6-10 sunset/amber; 11-15 neon cyberpunk magenta; 16-20 mothership bio-green.
         const cyberpunk = this.levelManager.theme === 'cyberpunk';
         const sunset = this.levelManager.theme === 'sunset';
-        const bg = cyberpunk ? '#0b0118' : (sunset ? '#2b1004' : '#0f172a');
-        const starColor = cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff');
-        const gridColor = cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)');
+        const mothership = this.levelManager.theme === 'mothership';
+        const bg = mothership ? '#03120d' : (cyberpunk ? '#0b0118' : (sunset ? '#2b1004' : '#0f172a'));
+        const starColor = mothership ? '#a7f3d0' : (cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff'));
+        const gridColor = mothership ? 'rgba(52, 211, 153, 0.10)' : (cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)'));
 
         this.ctx.fillStyle = bg;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
