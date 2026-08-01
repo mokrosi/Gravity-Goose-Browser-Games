@@ -40,97 +40,72 @@ class Physics {
         return false;
     }
 
-    /**
-     * Axis-separated AABB resolution (X axis).
-     * Moves the entity by vx*dt in sub-tile steps (never tunneling through a
-     * solid tile), pushes it perfectly flush against walls and zeroes vx.
-     */
     static resolveX(entity, level, dt) {
+        entity.x += entity.vx * dt;
         if (entity.vx === 0) return;
 
-        const dx = entity.vx * dt;
-        const sign = Math.sign(dx);
-        let remaining = Math.abs(dx);
+        const rowStart = Math.floor((entity.y + 0.1) / this.TILE_SIZE);
+        const rowEnd = Math.floor((entity.y + entity.height - 0.1) / this.TILE_SIZE);
 
-        const rowStart = Math.floor(entity.y / this.TILE_SIZE);
-        const rowEnd = Math.floor((entity.y + entity.height - 1) / this.TILE_SIZE);
-
-        while (remaining > 0) {
-            const step = Math.min(this.TILE_SIZE, remaining);
-            entity.x += sign * step;
-            remaining -= step;
-
-            const colStart = Math.floor(entity.x / this.TILE_SIZE);
-            const colEnd = Math.floor((entity.x + entity.width) / this.TILE_SIZE);
-
-            if (sign > 0) {
-                for (let col = colEnd; col >= colStart; col--) {
-                    if (this.solidInColumn(level, col, rowStart, rowEnd)) {
-                        entity.x = col * this.TILE_SIZE - entity.width;
-                        entity.vx = 0;
-                        return;
-                    }
-                }
-            } else {
-                for (let col = colStart; col <= colEnd; col++) {
-                    if (this.solidInColumn(level, col, rowStart, rowEnd)) {
-                        entity.x = (col + 1) * this.TILE_SIZE;
-                        entity.vx = 0;
-                        return;
-                    }
-                }
+        if (entity.vx > 0) {
+            const rightCol = Math.floor((entity.x + entity.width) / this.TILE_SIZE);
+            if (this.solidInColumn(level, rightCol, rowStart, rowEnd)) {
+                entity.x = rightCol * this.TILE_SIZE - entity.width;
+                entity.vx = 0;
+            }
+        } else if (entity.vx < 0) {
+            const leftCol = Math.floor(entity.x / this.TILE_SIZE);
+            if (this.solidInColumn(level, leftCol, rowStart, rowEnd)) {
+                entity.x = (leftCol + 1) * this.TILE_SIZE;
+                entity.vx = 0;
             }
         }
     }
 
-    /**
-     * Axis-separated AABB resolution (Y axis).
-     * Moves the entity by vy*dt in sub-tile steps (no floor/ceiling tunneling),
-     * pushes it flush against the surface and tracks the grounded state.
-     * "Ground" is the surface gravity pulls the entity into, so this works
-     * identically under inverted gravity (the ceiling becomes the floor).
-     */
     static resolveY(entity, level, dt) {
+        const oldY = entity.y;
+        entity.y += entity.vy * dt;
         entity.onGround = false;
         entity.onCeiling = false;
 
-        if (entity.vy === 0) return;
+        const gravDir = Math.sign(entity.gravity) || 1;
+        const colStart = Math.floor((entity.x + 0.1) / this.TILE_SIZE);
+        const colEnd = Math.floor((entity.x + entity.width - 0.1) / this.TILE_SIZE);
 
-        const dy = entity.vy * dt;
-        const sign = Math.sign(dy);
-        let remaining = Math.abs(dy);
-        const gravDir = Math.sign(entity.gravity);
-
-        const colStart = Math.floor(entity.x / this.TILE_SIZE);
-        const colEnd = Math.floor((entity.x + entity.width - 1) / this.TILE_SIZE);
-
-        while (remaining > 0) {
-            const step = Math.min(this.TILE_SIZE, remaining);
-            entity.y += sign * step;
-            remaining -= step;
-
-            const rowStart = Math.floor(entity.y / this.TILE_SIZE);
-            const rowEnd = Math.floor((entity.y + entity.height) / this.TILE_SIZE);
-
-            if (sign > 0) {
-                for (let row = rowEnd; row >= rowStart; row--) {
-                    if (this.solidInRow(level, row, colStart, colEnd)) {
-                        entity.y = row * this.TILE_SIZE - entity.height;
-                        entity.vy = 0;
-                        if (gravDir > 0) entity.onGround = true;
-                        else entity.onCeiling = true;
-                        return;
-                    }
+        if (entity.vy > 0) {
+            const startRow = Math.floor((oldY + entity.height) / this.TILE_SIZE);
+            const endRow = Math.floor((entity.y + entity.height) / this.TILE_SIZE);
+            for (let row = startRow; row <= endRow; row++) {
+                if (this.solidInRow(level, row, colStart, colEnd)) {
+                    entity.y = row * this.TILE_SIZE - entity.height;
+                    entity.vy = 0;
+                    if (gravDir > 0) entity.onGround = true;
+                    else entity.onCeiling = true;
+                    break;
+                }
+            }
+        } else if (entity.vy < 0) {
+            const startRow = Math.floor(oldY / this.TILE_SIZE);
+            const endRow = Math.floor(entity.y / this.TILE_SIZE);
+            for (let row = startRow; row >= endRow; row--) {
+                if (this.solidInRow(level, row, colStart, colEnd)) {
+                    entity.y = (row + 1) * this.TILE_SIZE;
+                    entity.vy = 0;
+                    if (gravDir < 0) entity.onGround = true;
+                    else entity.onCeiling = true;
+                    break;
+                }
+            }
+        } else {
+            if (gravDir > 0) {
+                const groundRow = Math.floor((entity.y + entity.height + 0.5) / this.TILE_SIZE);
+                if (this.solidInRow(level, groundRow, colStart, colEnd)) {
+                    entity.onGround = true;
                 }
             } else {
-                for (let row = rowStart; row <= rowEnd; row++) {
-                    if (this.solidInRow(level, row, colStart, colEnd)) {
-                        entity.y = (row + 1) * this.TILE_SIZE;
-                        entity.vy = 0;
-                        if (gravDir < 0) entity.onGround = true;
-                        else entity.onCeiling = true;
-                        return;
-                    }
+                const ceilingRow = Math.floor((entity.y - 0.5) / this.TILE_SIZE);
+                if (this.solidInRow(level, ceilingRow, colStart, colEnd)) {
+                    entity.onGround = true;
                 }
             }
         }

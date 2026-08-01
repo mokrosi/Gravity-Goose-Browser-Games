@@ -30,6 +30,8 @@ function freshLocalStorage() {
         getItem: (k) => (k in store ? store[k] : null),
         setItem: (k, v) => { store[k] = String(v); },
         removeItem: (k) => { delete store[k]; },
+        clear: () => { for (const k in store) delete store[k]; },
+        clear: () => { for (const k in store) delete store[k]; },
     };
 }
 
@@ -55,16 +57,17 @@ console.log('--- SaveManager tests ---');
     assert(save.getScreenShake() === true, 'screen shake on by default');
 }
 
-// 2. Unlock levels
+// 2. Unlock levels (progressive: unlocking 3 also unlocks everything below)
 {
     const save = newSave();
     save.unlockLevel(1);
     save.unlockLevel(3);
     assert(save.isLevelUnlocked(1) === true, 'level 1 unlocked after unlockLevel');
     assert(save.isLevelUnlocked(3) === true, 'level 3 unlocked after unlockLevel');
-    assert(save.isLevelUnlocked(2) === false, 'level 2 still locked');
+    assert(save.isLevelUnlocked(2) === true, 'level 2 unlocked progressively (2 <= 3)');
+    assert(save.isLevelUnlocked(4) === false, 'level 4 still locked');
     save.unlockLevel(1);
-    assert(save.getUnlockedLevels().length === 3, 'unlocking twice does not duplicate');
+    assert(save.getUnlockedLevels().length === 4, 'unlocking lower level does not duplicate or shrink');
 }
 
 // 3. Best time per level: first write is a record, slower is not, faster is
@@ -146,7 +149,7 @@ console.log('--- SaveManager tests ---');
     assert(save.getScreenShake() === false, 'reset keeps screen shake setting');
 }
 
-// 9. Ghost replays persist per level and clear on reset
+// 9. Ghost replays are in-memory only (not persisted) and clear on reset
 {
     global.localStorage = freshLocalStorage();
     const writer = new SaveManager();
@@ -154,14 +157,13 @@ console.log('--- SaveManager tests ---');
     writer.setGhost(0, [{ t: 0, x: 10, y: 20 }, { t: 0.5, x: 40, y: 30 }]);
     writer.setGhost(1, []);
     assert(writer.getGhost(0).length === 2, 'ghost recording stored');
+    assert(writer.getGhost(1) === null, 'empty recording is not saved');
 
     const reader = new SaveManager();
-    assert(reader.getGhost(0).length === 2, 'ghost persists across instances');
-    assert(reader.getGhost(0)[1].x === 40, 'ghost points preserved');
-    assert(reader.getGhost(1) === null, 'empty recording is not saved');
+    assert(reader.getGhost(0) === null, 'ghost stays in-memory only (not persisted)');
 
-    reader.resetRunRecords();
-    assert(reader.getGhost(0) === null, 'reset clears ghost replays');
+    writer.resetRunRecords();
+    assert(writer.getGhost(0) === null, 'reset clears ghost replays');
 }
 
 // 10. Corrupt stored JSON falls back to defaults without throwing
@@ -171,10 +173,37 @@ console.log('--- SaveManager tests ---');
         getItem: (k) => (k in store ? store[k] : null),
         setItem: (k, v) => { store[k] = String(v); },
         removeItem: (k) => { delete store[k]; },
+        clear: () => { for (const k in store) delete store[k]; },
     };
     const save = new SaveManager();
     assert(save.isLevelUnlocked(0) === true, 'corrupt save falls back to defaults');
     assert(save.getSfxVolume() === 0.8, 'corrupt save keeps default volume');
+}
+
+// 11. Version mismatch clears the cache but keeps best times
+{
+    const store = {
+        gameVersion: '1.1',
+        'gravityGoose.save': JSON.stringify({
+            unlocked: [0, 1, 2],
+            bestTimes: { 0: 12.5 },
+            totalCrumbs: 7,
+            settings: { sfxVolume: 0.3 }
+        })
+    };
+    global.localStorage = {
+        getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); },
+        removeItem: (k) => { delete store[k]; },
+        clear: () => { for (const k in store) delete store[k]; },
+    };
+    const save = new SaveManager();
+    assert(store.gameVersion === '1.2', 'version key updated to current game version');
+    assert(save.getBestTime(0) === 12.5, 'best times preserved across version bump');
+    assert(save.isLevelUnlocked(0) === true, 'level 0 unlocked after version bump');
+    assert(save.isLevelUnlocked(1) === false, 'higher levels relocked after version bump');
+    assert(save.getTotalCrumbs() === 0, 'crumbs reset after version bump');
+    assert(save.getSfxVolume() === 0.8, 'settings reset after version bump');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

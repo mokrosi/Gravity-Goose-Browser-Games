@@ -63,6 +63,7 @@ function makeElement(id) {
     click() { (this._listeners['click'] || []).forEach(fn => fn({ stopPropagation() {} })); },
     querySelectorAll() { return []; },
     getContext() { return makeCtx2d(); },
+    getBoundingClientRect() { return { left: 0, top: 0, width: 800, height: 600 }; },
     };
     el.classList = makeClassList(el);
     return el;

@@ -7,7 +7,10 @@ const MECHANIC_INTROS = {
     16: "WARNING: spike rain & trap triggers!",
     17: "WARNING: crumbling guillotines & hidden spikes!",
     18: "LAST LAUGH: gravity zones + troll traps!",
-    19: "WARNING: FINAL BOSS INCOMING!"
+    19: "WARNING: FINAL BOSS INCOMING!",
+    20: "KITCHEN WORLD: every mechanic is back — now combined!",
+    24: "WARNING: gravity maze — flip with care!",
+    28: "FINAL EXAM: every trap, every trick — GO!"
 };
 
 class MechanicToasts {

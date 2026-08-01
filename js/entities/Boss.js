@@ -119,7 +119,7 @@ class Boss extends Entity {
             if (chasing) {
                 const dist = player.x + player.width / 2 - (this.x + this.width / 2);
                 if (Math.abs(dist) > 16) this.faceDir = Math.sign(dist) || -1;
-                this.vx = this.faceDir * (170 + this.hits * 45);
+                this.vx = this.faceDir * (200 + this.hits * 45);
             } else {
                 this.vx *= Math.pow(0.01, dt);
                 if (Math.abs(this.vx) < 10) this.vx = 0;
@@ -133,11 +133,11 @@ class Boss extends Entity {
             // that fights from a ledge above.
             if (chasing && this.onGround && this.jumpCooldown === 0) {
                 const dist = player.x + player.width / 2 - (this.x + this.width / 2);
-                const wallBlocked = this.vx === 0 && Math.abs(dist) > 30;
-                const playerHigh = player.y + player.height < this.y + 20 && Math.abs(dist) < 340;
+                const wallBlocked = this.vx === 0 && Math.abs(dist) > 50;
+                const playerHigh = player.y + player.height < this.y + 20 && Math.abs(dist) < 380;
                 if (wallBlocked || playerHigh) {
                     this.vy = -780;
-                    this.jumpCooldown = 0.7;
+                    this.jumpCooldown = 0.55;
                 }
             }
 
@@ -415,6 +415,130 @@ class Boss extends Entity {
         ctx.globalAlpha = (firing ? 1 : 0.35) * flicker;
         ctx.fillStyle = '#fecdd3';
         ctx.fillRect(0, y + 1, right, 4);
+        ctx.restore();
+    }
+}
+
+class CatBoss extends Entity {
+    constructor(x, y, arenaHeight) {
+        super(x, y, 120, arenaHeight);
+        this.arenaHeight = arenaHeight;
+        this.state = 'idle'; // idle | telegraph | swiping | dead
+        this.timer = 2.0;
+        this.lane = -1; // 0=top, 1=middle, 2=bottom
+        this.laneHeights = [arenaHeight * 0.25, arenaHeight * 0.5, arenaHeight * 0.75];
+        this.baseX = x; // Starts advancing right
+        this.lungeX = 0; // Relative to baseX during swipe
+        this.pawY = arenaHeight / 2;
+        this.isDefeated = false;
+        this.scrollSpeed = 160; // Pixels per second
+    }
+
+    update(dt, level, player) {
+        if (this.isDefeated) return;
+
+        // Incessantly move forward
+        this.baseX += this.scrollSpeed * dt;
+        this.x = this.baseX; // Update physical hitbox base
+
+        // Wall of death: if player falls behind baseX, they die.
+        if (!player.isDead && player.x + player.width / 2 < this.baseX + 60) {
+            player.isDead = true;
+        }
+
+        this.timer -= dt;
+        if (this.timer <= 0) {
+            if (this.state === 'idle') {
+                this.state = 'telegraph';
+                this.timer = 0.8;
+                this.lane = Math.floor(Math.random() * 3);
+                this.pawY = this.laneHeights[this.lane] - 40;
+                this.lungeX = 0;
+            } else if (this.state === 'telegraph') {
+                this.state = 'swiping';
+                this.timer = 0.4;
+            } else if (this.state === 'swiping') {
+                this.state = 'idle';
+                this.timer = 1.6;
+                this.lungeX = 0;
+            }
+        }
+
+        if (this.state === 'swiping') {
+            this.lungeX += 1400 * dt; // fast swipe
+            if (this.lungeX > 800) this.lungeX = 800; // max reach
+        } else if (this.state === 'telegraph') {
+            this.lungeX = (Math.random() * 10 - 5); // Tremble
+        } else {
+            this.lungeX = 0;
+            this.pawY = (this.arenaHeight / 2) - 40 + Math.sin(Date.now() / 300) * 20;
+        }
+    }
+
+    hit() {
+        this.isDefeated = true;
+        this.state = 'dead';
+    }
+
+    firingBeam(arenaWidth) {
+        if (this.state === 'swiping') {
+            return {
+                x: this.baseX + this.lungeX - 20, // Paw hitbox during swipe
+                y: this.pawY + 10,
+                width: 140,
+                height: 60
+            };
+        }
+        return null;
+    }
+
+    draw(ctx, camera, assetManager) {
+        if (this.isDefeated) return;
+        
+        ctx.save();
+        const screenX = this.baseX - camera.x;
+        
+        // Draw Telegraph Warning Lane
+        if (this.state === 'telegraph' || this.state === 'swiping') {
+            const warnAlpha = (this.state === 'telegraph' && Math.floor(Date.now() / 100) % 2 === 0) ? 0.3 : 0.15;
+            ctx.fillStyle = `rgba(249, 115, 22, ${warnAlpha})`;
+            ctx.fillRect(screenX, this.laneHeights[this.lane] - camera.y - 40, 1000, 80);
+        }
+
+        // Draw Paw Body
+        const px = screenX + this.lungeX;
+        const py = this.pawY - camera.y;
+
+        // Paw arm coming from the left
+        ctx.fillStyle = '#f97316'; // Orange tabby
+        ctx.fillRect(screenX - 800, py + 10, 800 + this.lungeX + 60, 60);
+
+        // Paw pad
+        ctx.beginPath();
+        ctx.roundRect(px, py, 120, 80, 30);
+        ctx.fill();
+        ctx.strokeStyle = '#c2410c';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(px + 10, py + 10, 100, 60);
+
+        // White toes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(px + 100, py + 15, 12, 0, Math.PI*2);
+        ctx.arc(px + 115, py + 40, 12, 0, Math.PI*2);
+        ctx.arc(px + 100, py + 65, 12, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Claws out if swiping
+        if (this.state === 'swiping') {
+            ctx.fillStyle = '#e5e7eb';
+            ctx.beginPath();
+            ctx.moveTo(px + 110, py + 15); ctx.lineTo(px + 140, py + 10); ctx.lineTo(px + 110, py + 20);
+            ctx.moveTo(px + 125, py + 40); ctx.lineTo(px + 155, py + 40); ctx.lineTo(px + 125, py + 45);
+            ctx.moveTo(px + 110, py + 65); ctx.lineTo(px + 140, py + 70); ctx.lineTo(px + 110, py + 60);
+            ctx.fill();
+        }
+
         ctx.restore();
     }
 }

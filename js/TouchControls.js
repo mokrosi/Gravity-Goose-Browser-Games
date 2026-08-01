@@ -144,11 +144,8 @@ class TouchControls {
     }
 
     _vibrate(btn) {
-        try {
-            if (navigator.vibrate) navigator.vibrate(15);
-        } catch (e) {
-            // Haptics unavailable (e.g. iOS Safari) — nothing to do.
-        }
+        // Haptics moved to Player.js / Game.js for contextual feedback.
+        // This function now only handles the visual ripple effect.
         if (btn) {
             btn.classList.remove('haptic-pulse');
             void btn.offsetWidth;

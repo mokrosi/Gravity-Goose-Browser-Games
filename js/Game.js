@@ -3,6 +3,48 @@ class Game {
         this.canvas = document.getElementById('game-canvas');
         this.ctx = this.canvas.getContext('2d');
         
+        // High-DPI & Tablet Viewport Scaling
+        const baseWidth = 800;
+        const baseHeight = 600;
+
+        // --- High-DPI / Tablet Viewport Scaling Fix ---
+        // Ensure crisp rendering and correct scaling on high DPR devices (like Huawei tablets)
+        
+        // Handle Tab Focus & Canvas Context Loss
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.pause();
+                // If we use requestAnimationFrame, cancel it to prevent thread locking on tablets
+                if (this.rafId) {
+                    cancelAnimationFrame(this.rafId);
+                    this.rafId = null;
+                }
+            } else {
+                // Resume loop smoothly without a massive dt spike
+                this.lastTime = performance.now();
+                if (this.state === 'PLAYING') {
+                    this.rafId = requestAnimationFrame((t) => this.loop(t));
+                }
+            }
+        });
+
+        this.canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            this.pause();
+        }, false);
+        this.canvas.addEventListener('webglcontextrestored', () => {
+            // Re-bind assets or restart loop safely
+        }, false);
+        
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        this.baseWidth = baseWidth;
+        this.baseHeight = baseHeight;
+        this._fitViewport();
+
+        // Context Loss & Page Visibility API Handlers
+        this.isPausedBySystem = false;
+        this.rafId = null;
+        
         this.assetManager = new AssetManager();
         this.input = new InputHandler();
         this.touchControls = new TouchControls(this.input);
@@ -13,7 +55,12 @@ class Game {
         if (TouchControls.isTouchDevice()) {
             document.body.classList.add('touch-device');
         }
-        this.camera = new Camera(this.canvas.width, this.canvas.height);
+        this.camera = new Camera(this.logicalWidth, this.logicalHeight);
+        window.addEventListener('resize', () => this.refit());
+        window.addEventListener('orientationchange', () => this.refit());
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => this._fitViewport());
+        }
         this.levelManager = new LevelManager();
         this.soundManager = new SoundManager();
         this.particleSystem = new ParticleSystem();
@@ -83,6 +130,41 @@ class Game {
         }
 
         this.bindEvents();
+    }
+
+    _fitViewport() {
+        const parent = this.canvas.parentElement;
+        const rect = parent ? parent.getBoundingClientRect() : { width: 0, height: 0 };
+        let logicalW = this.baseWidth;
+        let logicalH = this.baseHeight;
+        if (rect.width > 0 && rect.height > 0) {
+            const aspect = rect.width / rect.height;
+            const baseAspect = this.baseWidth / this.baseHeight;
+            if (aspect > baseAspect && (!this.levelManager || !this.levelManager.isBossLevel)) {
+                logicalH = Math.round(this.baseWidth / aspect);
+                logicalH = Math.max(320, Math.min(logicalH, this.baseHeight));
+            }
+        }
+        this.logicalWidth = logicalW;
+        this.logicalHeight = logicalH;
+        this.canvas.width = Math.floor(logicalW * this.dpr);
+        this.canvas.height = Math.floor(logicalH * this.dpr);
+        if (this.ctx) this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        if (this.camera) {
+            this.camera.width = logicalW;
+            this.camera.height = logicalH;
+        }
+    }
+
+    refit() {
+        this._fitViewport();
+        if (this.player && this.levelManager && this.levelManager.width) {
+            this.camera.snap(
+                this.player,
+                this.levelManager.width * this.levelManager.tileSize,
+                this.levelManager.height * this.levelManager.tileSize
+            );
+        }
     }
 
     bindEvents() {
@@ -304,6 +386,8 @@ class Game {
     loadLevel() {
         if (this.levelManager.loadLevel(this.currentLevel)) {
             this.player = this.createPlayer();
+            this.spawnPoint = { x: this.player.x, y: this.player.y, gravityDirection: 1 };
+            
             this.bossDeathTimer = 0;
             this.bossVictoryShown = false;
             // Level 20 & 30 are single-screen boss arenas: the camera never scrolls.
@@ -311,6 +395,7 @@ class Game {
             // Hide mobile zoom-strip on the boss level (it doesn't zoom)
             // so we can fit more of the arena on screen.
             document.body.classList.toggle('boss-level', this.currentLevel === 19 || this.currentLevel === 29);
+            this._fitViewport();
             this.camera.snap(
                 this.player,
                 this.levelManager.width * this.levelManager.tileSize,
@@ -441,7 +526,7 @@ class Game {
             }).catch(() => {});
         } else if (navigator.clipboard) {
             navigator.clipboard.writeText(`${text} ${url}`);
-            this.spawnFloatText('COPIED LINK!', this.canvas.width / 2, 100, 'perfect');
+            this.spawnFloatText('COPIED LINK!', this.logicalWidth / 2, 100, 'perfect');
         }
     }
 
@@ -536,8 +621,8 @@ class Game {
         const el = document.createElement('div');
         el.className = 'float-text' + (extraClass ? ' ' + extraClass : '');
         el.innerText = text;
-        el.style.left = ((worldX - this.camera.x) / this.canvas.width * 100) + '%';
-        el.style.top = ((worldY - this.camera.y) / this.canvas.height * 100) + '%';
+        el.style.left = ((worldX - this.camera.x) / this.logicalWidth * 100) + '%';
+        el.style.top = ((worldY - this.camera.y) / this.logicalHeight * 100) + '%';
         layer.appendChild(el);
         el.addEventListener('animationend', () => el.remove());
     }
@@ -554,11 +639,25 @@ class Game {
     start() {
         this.assetManager.isDone().then(() => {
             this.lastTime = performance.now();
-            requestAnimationFrame((t) => this.loop(t));
+            if (this.state === 'PLAYING') {
+                this.rafId = requestAnimationFrame((t) => this.loop(t));
+            }
         });
     }
 
     update(dt) {
+        try {
+            this._update(dt);
+        } catch (err) {
+            this.state = 'ERROR';
+            document.getElementById('hud-time').innerText = 'ERROR: ' + err.message + ' ' + err.stack;
+            document.getElementById('hud-time').style.fontSize = '12px';
+            document.getElementById('hud-time').style.width = '100vw';
+            throw err;
+        }
+    }
+
+    _update(dt) {
         if (this.state !== 'PLAYING') return;
 
         // Speedrun timer (resets to 0 on instant respawn, freezes on pause/level end)
@@ -625,15 +724,24 @@ class Game {
         // Crumbling platforms tremble under the goose, then collapse.
         this.levelManager.updateCrumbling(dt, this.player);
 
-        // Moving lasers (Levels 11-14) sweep along their axis.
+        const cam = this.camera;
+        const cullBuffer = 64; // 2 tiles safe buffer
+        const isVisible = (obj) => {
+            return obj.x + (obj.width || 32) >= cam.x - cullBuffer &&
+                   obj.x <= cam.x + cam.width + cullBuffer &&
+                   obj.y + (obj.height || 32) >= cam.y - cullBuffer &&
+                   obj.y <= cam.y + cam.height + cullBuffer;
+        };
+
+        // Moving lasers (Levels 11-14, 21-29) sweep along their axis.
         for (let laser of this.levelManager.lasers) {
-            laser.update(dt);
+            if (isVisible(laser)) laser.update(dt);
         }
 
-        // ---- Level Devil troll traps (Levels 14-19) ----
+        // ---- Level Devil troll traps (Levels 14-29) ----
         // Fake golden crumbs erupt into spikes once the goose gets within 60px.
         for (const fc of this.levelManager.fakeCrumbs) {
-            if (fc.triggered) continue;
+            if (fc.triggered || !isVisible(fc)) continue;
             if (this.player.near(fc, 60)) {
                 this.levelManager.triggerFake(fc);
                 this.soundManager.playHurt();
@@ -644,7 +752,7 @@ class Game {
         }
         // Invisible trigger zones: entering one drops its spike trap instantly.
         for (const zone of this.levelManager.trapZones) {
-            if (zone.triggered) continue;
+            if (zone.triggered || !isVisible(zone)) continue;
             if (Physics.checkCollision(this.player, zone)) {
                 this.levelManager.triggerTrap(zone);
                 this.soundManager.playReset();
@@ -657,6 +765,7 @@ class Game {
         // Check Spike Hazard collisions (forgiving 15%-shrunk hitboxes; blink i-frames protect)
         if (!this.player.isInvincible) {
             for (let hazard of this.levelManager.hazards) {
+                if (!isVisible(hazard)) continue;
                 const hb = Physics.shrink(hazard, Physics.HAZARD_INSET);
                 if (Physics.checkCollision(this.player, hb)) {
                     this.player.isDead = true;
@@ -665,6 +774,7 @@ class Game {
 
             // Moving laser beams are equally deadly.
             for (let laser of this.levelManager.lasers) {
+                if (!isVisible(laser)) continue;
                 const hb = Physics.shrink(laser, Physics.HAZARD_INSET);
                 if (Physics.checkCollision(this.player, hb)) {
                     this.player.isDead = true;
@@ -689,6 +799,7 @@ class Game {
         if (this.player.isDead) {
             this.soundManager.playHurt();
             this.soundManager.playReset();
+            if ("vibrate" in navigator) navigator.vibrate([30, 50, 30]);
             this.particleSystem.emitHurt(this.player.x + 14, this.player.y + 14);
             if (!this.practiceRun) this.lives--;
             this.totalDeaths++;
@@ -704,7 +815,20 @@ class Game {
                 this.touchControls.hide();
             } else {
                 // Instant respawn: reset position, level timer, breadcrumbs and traps.
-                this.player = this.createPlayer();
+                this.player.x = this.spawnPoint.x;
+                this.player.y = this.spawnPoint.y;
+                this.player.vx = 0;
+                this.player.vy = 0;
+                this.player.gravity = this.spawnPoint.gravityDirection * Player.GRAVITY;
+                this.player.isDead = false;
+                this.player.state = 'idle';
+                this.player.flipsInAir = 0;
+                this.player.onGround = false;
+                this.player.onCeiling = false;
+                this.player.wallSliding = false;
+                this.player.steamCooldown = 0;
+                this.player.steamLaunch = false;
+
                 this.camera.snap(
                     this.player,
                     this.levelManager.width * this.levelManager.tileSize,
@@ -726,6 +850,7 @@ class Game {
 
         // Update enemies
         for (let enemy of this.levelManager.entities) {
+            if (!isVisible(enemy)) continue;
             enemy.update(dt, this.levelManager);
 
             // Check collision with player (forgiving hitbox; blink i-frames protect)
@@ -775,6 +900,7 @@ class Game {
                 if (Physics.checkCollision(this.player, sw)) {
                     sw.activated = true;
                     this.soundManager.playSwitch();
+                    if ("vibrate" in navigator) navigator.vibrate(80);
                     this.particleSystem.emitBreadCollect(sw.x + sw.width / 2, sw.y + sw.height / 2);
                     this.spawnFloatText('OVERLOAD!', sw.x + sw.width / 2, sw.y, 'perfect');
                     boss.hit();
@@ -792,8 +918,8 @@ class Game {
         // Update items (Bread)
         let allItemsCollected = true;
         for (let item of this.levelManager.items) {
-            item.update(dt);
-            if (!item.collected) {
+            if (!item.collected && isVisible(item)) {
+                item.update(dt);
                 if (Physics.checkCollision(this.player, item)) {
                     item.collected = true;
                     this.score++;
@@ -801,31 +927,60 @@ class Game {
                     this.soundManager.playCollect();
                     this.particleSystem.emitBreadCollect(item.x + 12, item.y + 12);
                     this.updateHUD();
+
+                    if (this.currentLevel === 29 && this.levelManager.boss) {
+                        this.levelManager.boss.hit();
+                        this.screenShake();
+                        for(let i=0; i<30; i++) {
+                            this.particleSystem.emitHurt(this.levelManager.boss.baseX + Math.random()*200, this.levelManager.boss.pawY + Math.random()*100);
+                        }
+                        this.spawnFloatText('SMASH!', this.levelManager.boss.baseX + 60, this.levelManager.boss.pawY - 20, 'perfect');
+                    }
                 } else {
                     allItemsCollected = false;
                 }
+            } else if (!item.collected) {
+                allItemsCollected = false;
             }
         }
 
         // Update Golden Breadcrumbs (optional 100% collectibles)
         for (let crumb of this.levelManager.crumbs) {
-            crumb.update(dt);
-            if (!crumb.collected && Physics.checkCollision(this.player, crumb)) {
-                crumb.collected = true;
-                this.crumbCollected++;
-                this.totalCrumbCollected++;
-                if (!this.practiceRun) this.save.addCrumb();
-                this.soundManager.playCrumb();
-                this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
-                this.player.rechargeFlip(); // golden breadcrumb recharges the flip
-                const perfect = this.crumbCollected === this.crumbTotal;
-                this.spawnFloatText(
-                    perfect ? 'Perfect!' : '+1',
-                    crumb.x + crumb.width / 2,
-                    crumb.y + crumb.height / 2,
-                    perfect ? 'perfect' : 'crumb'
-                );
-                this.updateHUD();
+            if (!crumb.collected && isVisible(crumb)) {
+                crumb.update(dt);
+                if (Physics.checkCollision(this.player, crumb)) {
+                    crumb.collected = true;
+                    this.crumbCollected++;
+                    this.totalCrumbCollected++;
+                    if (!this.practiceRun) this.save.addCrumb();
+                    this.soundManager.playCrumb();
+                    this.particleSystem.emitCrumbCollect(crumb.x + crumb.width / 2, crumb.y + crumb.height / 2);
+                    this.player.rechargeFlip(); // golden breadcrumb recharges the flip
+                    const perfect = this.crumbCollected === this.crumbTotal;
+                    this.spawnFloatText(
+                        perfect ? 'Perfect!' : '+1',
+                        crumb.x + crumb.width / 2,
+                        crumb.y + crumb.height / 2,
+                        perfect ? 'perfect' : 'crumb'
+                    );
+                    this.updateHUD();
+                }
+            }
+        }
+
+        // Checkpoints logic
+        if (this.levelManager.checkpoints) {
+            for (let cp of this.levelManager.checkpoints) {
+                if (!cp.active && isVisible(cp)) {
+                    if (Physics.checkCollision(this.player, cp)) {
+                        cp.active = true;
+                        this.spawnPoint = { x: cp.x, y: cp.y, gravityDirection: this.player.gravitySign };
+                        this.soundManager.playCollect();
+                        if ("vibrate" in navigator) navigator.vibrate(50);
+                        this.particleSystem.emitCrumbCollect(cp.x + cp.width / 2, cp.y + cp.height / 2);
+                        this.spawnFloatText('CHECKPOINT', cp.x + cp.width / 2, cp.y - 10, 'perfect');
+                    }
+                }
             }
         }
 
@@ -892,44 +1047,66 @@ class Game {
         const starColor = kitchen ? '#f97316' : (mothership ? '#a7f3d0' : (cyberpunk ? '#f0abfc' : (sunset ? '#fed7aa' : '#ffffff')));
         const gridColor = kitchen ? 'rgba(249, 115, 22, 0.15)' : (mothership ? 'rgba(52, 211, 153, 0.10)' : (cyberpunk ? 'rgba(244, 63, 94, 0.10)' : (sunset ? 'rgba(251, 146, 60, 0.09)' : 'rgba(56, 189, 248, 0.08)')));
 
-        this.ctx.fillStyle = bg;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        // Safe clearing using logical coords
+        this.ctx.clearRect(0, 0, this.logicalWidth, this.logicalHeight);
 
-        // Draw Parallax Stars
-        this.ctx.fillStyle = starColor;
-        for (let star of this.stars) {
-            let px = (star.x - this.camera.x * star.speed) % this.canvas.width;
-            let py = (star.y - this.camera.y * star.speed) % this.canvas.height;
-            if (px < 0) px += this.canvas.width;
-            if (py < 0) py += this.canvas.height;
+        // Map background color based on theme
+        const isSunset = this.levelManager.theme === 'sunset';
+        const isCyberpunk = this.levelManager.theme === 'cyberpunk';
+        const isMothership = this.levelManager.theme === 'mothership';
+        const isKitchen = this.levelManager.theme === 'kitchen';
 
-            this.ctx.globalAlpha = star.alpha;
-            this.ctx.fillRect(px, py, star.size, star.size);
-        }
-        this.ctx.globalAlpha = 1.0;
+        this.ctx.fillStyle = isKitchen ? '#2a1a0f' : (isMothership ? '#0d131f' : (isCyberpunk ? '#0b0410' : (isSunset ? '#2a0e1b' : '#1a1025')));
+        this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 
-        // Distant Grid Lines (Retro Synthwave Horizon feel)
-        this.ctx.strokeStyle = gridColor;
-        this.ctx.lineWidth = 1;
-        const gridSize = 40;
-        const offsetX = -(this.camera.x * 0.3) % gridSize;
-        const offsetY = -(this.camera.y * 0.3) % gridSize;
-
-        for (let x = offsetX; x < this.canvas.width; x += gridSize) {
+        // Subtle background grid or stars
+        if (isMothership || isCyberpunk || isSunset) {
+            this.ctx.fillStyle = isSunset ? 'rgba(255, 200, 150, 0.4)' : (isMothership ? 'rgba(150, 255, 255, 0.4)' : 'rgba(255, 50, 150, 0.4)');
+            for (let star of this.bgStars) {
+                let px = (star.x - this.camera.x * star.speed) % this.logicalWidth;
+                if (px < 0) px += this.logicalWidth;
+                this.ctx.fillRect(px, star.y, star.size, star.size);
+            }
+        } else if (isKitchen) {
+            this.ctx.fillStyle = 'rgba(255, 200, 150, 0.3)';
+            for (let crumb of this.bgStars) {
+                let px = (crumb.x - this.camera.x * crumb.speed) % this.logicalWidth;
+                if (px < 0) px += this.logicalWidth;
+                this.ctx.fillRect(px, crumb.y, crumb.size, crumb.size);
+            }
+        } else {
+            this.ctx.strokeStyle = '#2a1b38';
+            this.ctx.lineWidth = 1;
             this.ctx.beginPath();
-            this.ctx.moveTo(x, 0);
-            this.ctx.lineTo(x, this.canvas.height);
-            this.ctx.stroke();
-        }
-        for (let y = offsetY; y < this.canvas.height; y += gridSize) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.canvas.width, y);
+            const gridSize = 32;
+            const offsetX = -(this.camera.x % gridSize);
+            const offsetY = -(this.camera.y % gridSize);
+
+            for (let x = offsetX; x < this.logicalWidth; x += gridSize) {
+                this.ctx.moveTo(x, 0);
+                this.ctx.lineTo(x, this.logicalHeight);
+            }
+            for (let y = offsetY; y < this.logicalHeight; y += gridSize) {
+                this.ctx.moveTo(0, y);
+                this.ctx.lineTo(this.logicalWidth, y);
+            }
             this.ctx.stroke();
         }
     }
 
     draw() {
+        try {
+            this._draw();
+        } catch (err) {
+            this.state = 'ERROR';
+            document.getElementById('hud-time').innerText = 'ERROR (draw): ' + err.message + ' ' + err.stack;
+            document.getElementById('hud-time').style.fontSize = '12px';
+            document.getElementById('hud-time').style.width = '100vw';
+            throw err;
+        }
+    }
+
+    _draw() {
         this.drawParallaxBackground();
 
         const showWorld =
@@ -975,13 +1152,13 @@ class Game {
     }
     start() {
         this.goToStart();
-        requestAnimationFrame((t) => {
-            this.lastTime = t;
-            this.loop(t);
-        });
+        this.lastTime = performance.now();
+        this.rafId = requestAnimationFrame((t) => this.loop(t));
     }
 
     loop(timestamp) {
+        if (this.isPausedBySystem) return;
+
         // Delta time in seconds, capped to avoid tunneling / spiral-of-death
         // on lag spikes (physics is fully frame-rate independent).
         const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
@@ -991,6 +1168,6 @@ class Game {
         this.draw();
         this.input.update();
 
-        requestAnimationFrame((t) => this.loop(t));
+        this.rafId = requestAnimationFrame((t) => this.loop(t));
     }
 }

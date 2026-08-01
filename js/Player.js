@@ -104,6 +104,7 @@ class Player extends Entity {
         this.vy = this.gravitySign * 80;
         this.stretchTimer = 0.12;
         if (soundManager) soundManager.playFlip();
+        if ("vibrate" in navigator) navigator.vibrate(10);
         if (particleSystem) {
             particleSystem.emitGravityFlip(
                 this.x + this.width / 2,
@@ -131,6 +132,7 @@ class Player extends Entity {
 
     update(dt, input, level, soundManager, particleSystem) {
         if (this.isDead) return;
+        dt = Math.min(dt, 0.1);
 
         // --- Squash & stretch timers decay ---
         this.squashTimer = Math.max(0, this.squashTimer - dt);
@@ -231,6 +233,7 @@ class Player extends Entity {
             this.coyoteTimer = 0;
             this.stretchTimer = 0.14;
             if (soundManager) soundManager.playJump();
+            if ("vibrate" in navigator) navigator.vibrate(10);
             if (particleSystem) {
                 particleSystem.emitDust(this.x + this.width / 2, this.feetY, 7);
             }
@@ -245,6 +248,7 @@ class Player extends Entity {
             this.wallSliding = false;
             this.stretchTimer = 0.14;
             if (soundManager) soundManager.playJump();
+            if ("vibrate" in navigator) navigator.vibrate(10);
             if (particleSystem) {
                 particleSystem.emitDust(this.x + this.width / 2, this.feetY, 6);
             }
@@ -371,6 +375,7 @@ class Player extends Entity {
             this._spawnAfterimages(startX, newX);
         }
         if (soundManager) soundManager.playBlink();
+        if ("vibrate" in navigator) navigator.vibrate(20);
         if (particleSystem) {
             particleSystem.emitBlink(startX + this.width / 2, this.y + this.height / 2, dir);
             particleSystem.emitBlink(newX + this.width / 2, this.y + this.height / 2, dir);

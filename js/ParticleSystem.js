@@ -139,6 +139,9 @@ class ParticleSystem {
                 this.particles.splice(i, 1);
             }
         }
+        if (this.particles.length > 50) {
+            this.particles.splice(0, this.particles.length - 50);
+        }
     }
 
     draw(ctx, camera) {

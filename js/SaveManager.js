@@ -12,21 +12,23 @@
  */
 class SaveManager {
     static STORAGE_KEY = 'gravityGoose.save';
+    static GAME_VERSION = '1.2';
 
     constructor() {
         this.data = {
-            unlocked: [0],        // level indices the player can pick from the level select
-            bestTimes: {},        // { [levelIndex]: seconds }
-            bestTotal: null,      // seconds, or null if no run finished yet
-            totalCrumbs: 0,       // lifetime golden breadcrumbs collected
-            ghosts: {},           // { [levelIndex]: [{t,x,y}, ...] } best-run replays
+            unlockedLevel: 0,
+            bestTimes: {},
+            bestTotal: null,
+            totalCrumbs: 0,
+            // In-memory only (not saved to prevent memory leaks)
+            ghosts: {},
             seenMechanicToasts: [],
-            hintsShown: { move: false, jumpHold: false, blink: false, flip: false },
+            hintsShown: {},
             achievements: [],
             settings: {
-                sfxVolume: 0.8,   // 0..1 master volume
-                screenShake: true, // accessibility: disable motion-heavy shake
-                assistMode: false  // accessibility: +2 extra lives (5 total)
+                sfxVolume: 0.8,
+                screenShake: true,
+                assistMode: false
             }
         };
         this.load();
@@ -34,37 +36,75 @@ class SaveManager {
 
     load() {
         try {
+            const rawVersion = localStorage.getItem('gameVersion');
+            if (rawVersion !== SaveManager.GAME_VERSION) {
+                // Clear cache on version mismatch, keeping only the bestTimes safely if possible
+                let preservedTimes = {};
+                try {
+                    const oldData = JSON.parse(localStorage.getItem(SaveManager.STORAGE_KEY) || '{}');
+                    if (oldData.bestTimes) preservedTimes = oldData.bestTimes;
+                } catch (e) {}
+                
+                localStorage.clear();
+                localStorage.setItem('gameVersion', SaveManager.GAME_VERSION);
+                this.data.bestTimes = preservedTimes;
+                this.save();
+                return;
+            }
+
             const raw = localStorage.getItem(SaveManager.STORAGE_KEY);
             if (raw) {
                 const saved = JSON.parse(raw);
-                this.data = Object.assign({}, this.data, saved);
-                this.data.settings = Object.assign({}, this.data.settings, (saved && saved.settings) || {});
+                this.data.unlockedLevel = typeof saved.unlockedLevel === 'number' ? saved.unlockedLevel : Math.max(...(saved.unlocked || [0]));
+                this.data.bestTimes = saved.bestTimes || {};
+                this.data.bestTotal = typeof saved.bestTotal === 'number' ? saved.bestTotal : null;
+                this.data.totalCrumbs = saved.totalCrumbs || 0;
+                this.data.seenMechanicToasts = saved.seenMechanicToasts || [];
+                this.data.hintsShown = saved.hintsShown || {};
+                this.data.achievements = saved.achievements || [];
+                if (saved.settings) {
+                    this.data.settings = Object.assign({}, this.data.settings, saved.settings);
+                }
             }
         } catch (e) { /* localStorage unavailable — use in-memory defaults */ }
     }
 
     save() {
         try {
-            localStorage.setItem(SaveManager.STORAGE_KEY, JSON.stringify(this.data));
+            // ONLY save lightweight primitives to prevent cache bug (ghosts stay in-memory)
+            const payload = {
+                unlockedLevel: this.data.unlockedLevel,
+                bestTimes: this.data.bestTimes,
+                bestTotal: this.data.bestTotal,
+                totalCrumbs: this.data.totalCrumbs,
+                seenMechanicToasts: this.data.seenMechanicToasts,
+                hintsShown: this.data.hintsShown,
+                achievements: this.data.achievements,
+                settings: this.data.settings
+            };
+            localStorage.setItem(SaveManager.STORAGE_KEY, JSON.stringify(payload));
         } catch (e) { /* localStorage unavailable — ignore */ }
     }
 
     // --- Unlocked levels ------------------------------------------------
 
     isLevelUnlocked(index) {
-        return this.data.unlocked.indexOf(index) !== -1;
+        return index <= this.data.unlockedLevel;
     }
 
     unlockLevel(index) {
-        if (this.data.unlocked.indexOf(index) === -1) {
-            this.data.unlocked.push(index);
-            this.data.unlocked.sort((a, b) => a - b);
+        if (index > this.data.unlockedLevel) {
+            this.data.unlockedLevel = index;
             this.save();
         }
     }
 
     getUnlockedLevels() {
-        return this.data.unlocked.slice();
+        const levels = [];
+        for (let i = 0; i <= this.data.unlockedLevel; i++) {
+            levels.push(i);
+        }
+        return levels;
     }
 
     // --- Best times ------------------------------------------------------
@@ -215,7 +255,7 @@ class SaveManager {
         this.data.bestTotal = null;
         this.data.totalCrumbs = 0;
         this.data.ghosts = {};
-        this.data.unlocked = [0];
+        this.data.unlockedLevel = 0;
         this.save();
     }
 }

@@ -64,7 +64,7 @@ for (let i = 0; i < lm.levels.length; i++) {
     assert(/^#+$/.test(layout[layout.length - 1]), `L${i + 1} bottom row all solid`);
     layout.forEach((row, r) => {
         assert(row[0] === '#' && row[row.length - 1] === '#', `L${i + 1} row ${r} has solid side walls`);
-        assert(/^[#^PBcEzCSFTV. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
+        assert(/^[#^PBcEzCSFTVR. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
     });
 }
 

@@ -65,17 +65,19 @@ a {
 
 /* Arcade Top Header & HUD */
 #arcade-header {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
+    z-index: 100;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     row-gap: 10px;
     padding: 12px 20px;
-    margin-bottom: 12px;
     background: rgba(30, 27, 75, 0.8);
-    border: 2px solid var(--glass-border);
-    border-radius: 8px;
+    border-bottom: 2px solid var(--glass-border);
     box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.2);
 }
 
@@ -209,6 +211,8 @@ a {
     image-rendering: pixelated;
     overflow: hidden;
     box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 #game-canvas {
@@ -290,6 +294,18 @@ a {
 }
 
 /* Floating text layer (crumb pickups, best-run popups) */
+.touch-controls {
+    display: none;
+    position: absolute;
+    bottom: max(15px, env(safe-area-inset-bottom));
+    left: max(15px, env(safe-area-inset-left));
+    right: max(15px, env(safe-area-inset-right));
+    width: calc(100% - max(30px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 100;
+}
+
 #float-layer {
     position: absolute;
     top: 0;
@@ -339,6 +355,7 @@ a {
     height: 100%;
     z-index: 50;
     pointer-events: none;
+    touch-action: manipulation;
 }
 
 /* Glassmorphism Screens */
@@ -360,16 +377,31 @@ a {
     transition: opacity 0.3s ease;
     overflow-y: auto;
     scroll-behavior: smooth;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
     padding: 40px 16px 0px 16px; /* Removed bottom padding, handled by ::after */
+}
+
+/* Keep the menu column readable on very wide screens */
+.screen > * {
+    max-width: 620px;
+}
+
+.screen::before {
+    content: '';
+    display: block;
+    flex-shrink: 0;
+    width: 100%;
+    margin: auto;
 }
 
 /* Fix flexbox scroll padding ignoring the bottom padding */
 .screen::after {
     content: '';
     display: block;
+    flex: 1 0 auto;
     min-height: 60px;
     flex-shrink: 0;
-    width: 100%;
 }
 
 .screen.hidden {
@@ -776,8 +808,9 @@ a {
 /* Settings Menu */
 .settings-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
+    gap: 8px 16px;
     margin-bottom: 24px;
     width: 100%;
     max-width: 420px;
@@ -901,7 +934,7 @@ input[type="checkbox"] {
 /* Prevent pinch-zoom / scroll / double-tap zoom anywhere in the game */
 html,
 body {
-    touch-action: none;
+    touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
@@ -937,6 +970,10 @@ body {
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    padding-left: max(15px, env(safe-area-inset-left));
+    padding-right: max(15px, env(safe-area-inset-right));
+    padding-bottom: max(15px, env(safe-area-inset-bottom));
+    padding-top: max(10px, env(safe-area-inset-top));
 }
 
 @media (pointer: coarse) {
@@ -1022,8 +1059,8 @@ body.touch-device #touch-controls.hidden {
 .touch-zone-right {
     display: grid;
     grid-template-areas:
-        "flip flip"
-        "blink jump";
+        "jump jump"
+        "blink flip";
     grid-template-columns: auto auto;
     grid-template-rows: auto auto;
     align-items: end;
@@ -1079,44 +1116,98 @@ body.touch-device #touch-controls.hidden {
         justify-content: flex-start;
     }
     #arcade-header {
+        position: static;
+        z-index: auto;
+        flex-shrink: 0;
         margin-bottom: 0;
         border-radius: 0;
         border-left: none;
         border-right: none;
         border-top: none;
         background: #0f172a;
-        padding: 6px 16px;
+        padding: 4px 12px;
+        padding-top: max(4px, env(safe-area-inset-top));
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
     }
     #game-container {
-        flex-grow: 1;
+        flex: 1 1 auto;
         width: 100%;
         height: auto;
+        min-height: 0;
         aspect-ratio: auto;
         border: none;
         border-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     #game-canvas {
         object-fit: contain;
-        transform: scale(1.35) translateX(4%);
-        transform-origin: top center;
+        width: 100%;
+        height: 100%;
+        transform: none;
+        transform-origin: center center;
     }
-    /* Level 20's single-screen boss arena must NOT be zoomed past the
-       viewport edges, or the corner switches get clipped off-screen. */
     body.boss-level #game-canvas {
         transform: none;
     }
-    /* The ghost-run delta is desktop-only clutter on small screens. */
     .hud-delta {
         display: none !important;
     }
+    .screen {
+        padding: 8px 12px;
+    }
+    .screen::after {
+        min-height: 24px;
+    }
+    .controls-card {
+        display: none !important;
+    }
+    .title {
+        font-size: 16px !important;
+        margin-bottom: 2px !important;
+    }
+    .title-sub {
+        font-size: 10px !important;
+        margin-bottom: 6px !important;
+    }
+    .subtitle {
+        font-size: 9px !important;
+        margin-bottom: 8px !important;
+    }
+    .menu-box {
+        gap: 6px !important;
+        margin-top: 4px !important;
+    }
+    .btn {
+        padding: 12px 20px !important;
+        font-size: 11px !important;
+        border-radius: 12px !important;
+    }
+    #level-select-grid {
+        justify-content: center;
+        gap: 6px !important;
+        max-height: 50vh;
+        overflow-y: auto;
+        padding-bottom: 8px;
+        scroll-padding: 8px;
+        touch-action: pan-y;
+    }
+    .level-btn {
+        font-size: 10px !important;
+        border-radius: 8px !important;
+    }
     .touch-zone-left {
-        left: 10px;
-        bottom: 10px;
+        left: max(8px, env(safe-area-inset-left));
+        bottom: max(8px, env(safe-area-inset-bottom));
+        transform: scale(0.8);
         transform-origin: bottom left;
     }
     .touch-zone-right {
-        right: 10px;
-        bottom: 10px;
+        right: max(8px, env(safe-area-inset-right));
+        bottom: max(8px, env(safe-area-inset-bottom));
+        transform: scale(0.8);
         transform-origin: bottom right;
     }
 }

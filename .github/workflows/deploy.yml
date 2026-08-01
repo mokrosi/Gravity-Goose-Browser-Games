@@ -18,8 +18,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Run test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run tests
+        run: |
+          set -e
+          for f in tests/*.test.js; do node "$f"; done
+
   deploy:
     name: Deploy to GitHub Pages
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages

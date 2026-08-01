@@ -14,7 +14,7 @@ class HintSystem {
     update(dt) {
         if (!this.game.player || this.game.state !== 'PLAYING') return;
 
-        if (this.game.save.data.unlocked.length > 1 && !this.game.save.hasSeenHint('move')) {
+        if (this.game.save.getUnlockedLevels().length > 1 && !this.game.save.hasSeenHint('move')) {
             this.game.save.markHintSeen('move');
             this.game.save.markHintSeen('jumpHold');
             this.game.save.markHintSeen('blink');
@@ -49,7 +49,7 @@ class HintSystem {
                 if (this.activeKey !== 'jumpHold') {
                     this.show('jumpHold', 'Hold JUMP for Full Height');
                 }
-                if (this.game.input.isKeyDown('KeyW') || this.game.input.isKeyDown('ArrowUp') || this.game.input.isTouch('KeyW')) {
+                if (this.game.input.isKeyDown('KeyW') || this.game.input.isKeyDown('ArrowUp')) {
                     save.markHintSeen('jumpHold');
                     this.hide();
                 }
