@@ -1,65 +1,68 @@
 /*
- * Boss — Level 15 mecha-frog overlord.
+ * Boss — Level 20 "Mecha-Alien" overlord.
  *
- * Stationary on the left of the boss arena, the boss cycles an attack pattern:
- * idle → telegraph → firing → cooldown → idle, alternating which half of the
- * arena it floods with a full-width laser beam. While "firing" the beam is a
- * deadly AABB the player must dodge by being in the OTHER half of the arena.
+ * Hovers on the right side of the single-screen arena, bobbing up and down.
+ * Every ~1.5s it charges a horizontal laser cannon aimed at the goose's
+ * current altitude and sweeps the beam across the arena. The beam is a
+ * deadly AABB (dodgeable with gravity flips and blink).
  *
- * The boss cannot be hurt directly: the goose must touch all 3 overload
- * switches on the right of the arena. Each switch triggers `hit()`, and the
- * third one calls `defeat()` which plays a short dying animation before the
- * game declares Final Victory.
+ * The boss cannot be hurt directly: the goose must press all 4 overload
+ * switches ('S') in the four corners of the arena. Each switch triggers
+ * `hit()`, and the fourth calls `defeat()` which plays a short dying
+ * animation before the game declares Final Victory.
  */
 class Boss extends Entity {
-    static IDLE_TIME = 1.1;
-    static TELEGRAPH_TIME = 0.9;
-    static FIRE_TIME = 1.5;
-    static COOLDOWN_TIME = 0.7;
-    static DEATH_TIME = 1.6;
+    // Full attack cycle ≈ 1.5s: idle → telegraph → firing → cooldown.
+    static IDLE_TIME = 0.5;
+    static TELEGRAPH_TIME = 0.35;
+    static FIRE_TIME = 0.3;
+    static COOLDOWN_TIME = 0.35;
+    static DEATH_TIME = 1.8;
+    static SWITCHES_NEEDED = 4;
 
     constructor(x, y, arenaHeight) {
-        super(x, y, 96, 128);
+        super(x, y, 96, 84);
         this.arenaHeight = arenaHeight;
         this.state = 'idle';      // idle | telegraph | firing | cooldown | dead
         this.timer = Boss.IDLE_TIME;
-        this.side = 'top';        // which half fires next
         this.hits = 0;
         this.flashTimer = 0;      // white hit-flash
         this.wobble = Math.random() * Math.PI * 2;
+        // Vertical hover band: keeps the boss inside the arena.
+        this.hoverBase = Math.max(96, Math.min(this.arenaHeight - 170, this.y));
+        this.hoverRange = Math.max(50, Math.min(140, this.arenaHeight / 4));
+        // Y-coordinate the laser is aimed at (locked when the telegraph starts).
+        this.aimY = this.hoverBase;
     }
 
     get isDefeated() {
         return this.state === 'dead';
     }
 
-    // Deadly AABB while firing, else null. The beam spans from the boss to
-    // the right edge of the arena and covers the top or bottom half.
+    // Deadly AABB while firing: a horizontal beam from the left wall to the
+    // cannon, at the height the goose stood when the shot was charged.
     firingBeam(levelWidth) {
         if (this.state !== 'firing') return null;
-        const half = this.arenaHeight / 2;
-        const x = this.x + this.width;
-        const width = levelWidth - x;
-        return this.side === 'top'
-            ? { x, y: 0, width, height: half }
-            : { x, y: half, width, height: this.arenaHeight - half };
+        const right = this.x - 12;
+        if (right <= 0) return null;
+        return { x: 0, y: this.aimY - 5, width: right, height: 10 };
     }
 
     // One overload switch was hit — the boss shudders and flashes.
     hit() {
         this.hits++;
         this.flashTimer = 0.25;
-        this.timer = Math.min(this.timer, Boss.TELEGRAPH_TIME);
+        this.timer = Math.min(this.timer, Boss.COOLDOWN_TIME);
     }
 
-    // All three switches overloaded — enter the death sequence.
+    // All four switches overloaded — enter the death sequence.
     defeat() {
         this.state = 'dead';
         this.timer = Boss.DEATH_TIME;
     }
 
-    update(dt, level) {
-        this.wobble += dt * 2;
+    update(dt, level, player) {
+        this.wobble += dt * 2.2;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
 
         if (this.state === 'dead') {
@@ -67,18 +70,23 @@ class Boss extends Entity {
             return;
         }
 
+        // Hover: gentle sine bob up and down on the right side of the arena.
+        this.y = this.hoverBase + Math.sin(this.wobble) * this.hoverRange;
+
         this.timer -= dt;
         if (this.timer <= 0) {
             if (this.state === 'idle') {
                 this.state = 'telegraph';
                 this.timer = Boss.TELEGRAPH_TIME;
+                // Lock the aim to the goose's altitude as the shot charges.
+                const target = player ? player.y + player.height / 2 : this.arenaHeight / 2;
+                this.aimY = Math.max(20, Math.min(this.arenaHeight - 20, target));
             } else if (this.state === 'telegraph') {
                 this.state = 'firing';
                 this.timer = Boss.FIRE_TIME;
             } else if (this.state === 'firing') {
                 this.state = 'cooldown';
                 this.timer = Boss.COOLDOWN_TIME;
-                this.side = this.side === 'top' ? 'bottom' : 'top';
             } else {
                 this.state = 'idle';
                 this.timer = Boss.IDLE_TIME;
@@ -89,91 +97,103 @@ class Boss extends Entity {
     draw(ctx, camera, assetManager, level) {
         const dx = this.x - camera.x;
         const dy = this.y - camera.y;
+        const firing = this.state === 'firing';
+        const telegraph = this.state === 'telegraph';
+        const dying = this.state === 'dead';
 
-        // Full-width half-arena laser beam (telegraph flickers, firing is hot).
-        if (this.state === 'telegraph' || this.state === 'firing') {
-            this._drawBeam(ctx, camera, level);
+        // Laser beam (drawn behind everything: from the left wall to the cannon).
+        if (firing || telegraph) {
+            this._drawLaser(ctx, camera, level);
         }
 
         if (dx + this.width < 0 || dx > camera.width || dy + this.height < 0 || dy > camera.height) return;
 
-        const shake = this.state === 'dead'
-            ? (Math.random() * 6 - 3) * Math.max(0, this.timer / Boss.DEATH_TIME)
+        const shake = dying
+            ? (Math.random() * 8 - 4) * Math.max(0, this.timer / Boss.DEATH_TIME)
             : 0;
         const bx = dx + shake;
         const by = dy + shake;
         const flash = this.flashTimer > 0;
-        const dying = this.state === 'dead';
-        const bodyColor = flash ? '#ffffff' : (dying ? '#3f3f46' : '#14532d');
+        const hullColor = flash ? '#ffffff' : (dying ? '#3f3f46' : '#1e1b4b');
+        const accentColor = flash ? '#fecdd3' : (dying ? '#52525b' : '#312e81');
 
         ctx.save();
-        ctx.globalAlpha = dying ? Math.max(0.2, this.timer / Boss.DEATH_TIME) : 1;
+        ctx.globalAlpha = dying ? Math.max(0.15, this.timer / Boss.DEATH_TIME) : 1;
 
-        // Legs
-        ctx.fillStyle = flash ? '#fecdd3' : '#065f46';
-        ctx.fillRect(bx + 6, by + this.height - 24, 20, 24);
-        ctx.fillRect(bx + this.width - 26, by + this.height - 24, 20, 24);
+        // Thruster glow under the hull (pulses as it hovers).
+        const thruster = 0.5 + 0.5 * Math.sin(this.wobble * 3);
+        ctx.globalAlpha = ctx.globalAlpha * (0.45 + 0.4 * thruster);
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(bx + 24, by + this.height - 2);
+        ctx.lineTo(bx + 72, by + this.height - 2);
+        ctx.lineTo(bx + 48, by + this.height + 14 + 10 * thruster);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = dying ? Math.max(0.15, this.timer / Boss.DEATH_TIME) : 1;
 
-        // Armored torso
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(bx + 4, by + 30, this.width - 8, this.height - 40);
-        ctx.fillStyle = flash ? '#fecdd3' : '#065f46';
-        ctx.fillRect(bx + 10, by + 38, 22, 56);
-        ctx.fillRect(bx + this.width - 32, by + 38, 22, 56);
+        // Rear stabilizer fins.
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(bx + 4, by + 18, 12, 34);
+        ctx.fillRect(bx + this.width - 16, by + 18, 12, 34);
+        ctx.fillStyle = flash ? '#fecdd3' : '#0ea5e9';
+        ctx.fillRect(bx + 4, by + 22, 6, 26);
+        ctx.fillRect(bx + this.width - 10, by + 22, 6, 26);
 
-        // Head
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(bx + 10, by, this.width - 20, 42);
-        ctx.fillStyle = flash ? '#fecdd3' : '#166534';
-        ctx.fillRect(bx + 14, by + 6, this.width - 28, 30);
+        // Armored hull (trapezoid-ish block).
+        ctx.fillStyle = hullColor;
+        ctx.fillRect(bx + 8, by + 12, this.width - 16, this.height - 26);
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(bx + 14, by + 18, this.width - 28, this.height - 38);
+        // Chest plate + core: the core grows & reddens as switches are hit.
+        ctx.fillStyle = flash ? '#fda4af' : (this.hits >= Boss.SWITCHES_NEEDED ? '#ffffff' : '#22d3ee');
+        ctx.beginPath();
+        ctx.arc(bx + this.width / 2, by + 46, 9 + this.hits * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = flash ? '#fecdd3' : '#0e7490';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-        // Angry glowing eyes (flare while attacking / dying)
-        const eyeColor = (this.state === 'firing' || this.state === 'telegraph' || dying)
+        // Head with the eye slit (flares red while charging / firing).
+        ctx.fillStyle = hullColor;
+        ctx.fillRect(bx + 20, by, this.width - 40, 16);
+        const eyeColor = (firing || telegraph || dying)
             ? '#f43f5e'
             : (flash ? '#ffffff' : '#facc15');
         ctx.fillStyle = eyeColor;
-        ctx.fillRect(bx + 18, by - 10, 20, 20);
-        ctx.fillRect(bx + this.width - 38, by - 10, 20, 20);
+        ctx.fillRect(bx + 28, by + 4, this.width - 56, 7);
         ctx.fillStyle = '#09090b';
-        ctx.fillRect(bx + 25, by - 6, 7, 7);
-        ctx.fillRect(bx + this.width - 32, by - 6, 7, 7);
+        ctx.fillRect(bx + 34, by + 6, this.width - 68, 3);
+        // Antenna.
+        ctx.fillStyle = flash ? '#fecdd3' : '#facc15';
+        ctx.fillRect(bx + this.width / 2 - 2, by - 10, 4, 10);
+        ctx.fillRect(bx + this.width / 2 - 6, by - 16, 12, 6);
 
-        // Antenna
-        ctx.fillStyle = flash ? '#fecdd3' : '#a3e635';
-        ctx.fillRect(bx + this.width / 2 - 2, by - 18, 4, 12);
-        ctx.fillRect(bx + this.width / 2 - 7, by - 26, 14, 9);
-
-        // Overload core — spins up as switches are hit
-        ctx.fillStyle = this.hits >= 3 ? '#ffffff' : (flash ? '#fda4af' : '#f43f5e');
-        ctx.beginPath();
-        ctx.arc(bx + this.width / 2, by + 76, 13 + this.hits * 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Laser cannon arm (front-left, pointing at the goose).
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(bx - 14, by + 26, 20, 12);
+        ctx.fillStyle = (firing || telegraph) ? '#f43f5e' : (flash ? '#ffffff' : '#94a3b8');
+        ctx.fillRect(bx - 20, by + 28, 10, 8);
 
         ctx.restore();
     }
 
-    _drawBeam(ctx, camera, level) {
+    // Horizontal beam from the left wall to the cannon at aimY.
+    _drawLaser(ctx, camera, level) {
         const levelWidth = level.width * Physics.TILE_SIZE;
-        const half = this.arenaHeight / 2;
-        const bx = this.x + this.width - camera.x;
-        const bw = levelWidth - (this.x + this.width);
-        const top = this.side === 'top';
-        const by = top ? -camera.y : half - camera.y;
-        const bh = top ? half : this.arenaHeight - half;
+        const right = this.x - camera.x - 12;
+        const y = this.aimY - camera.y;
         const firing = this.state === 'firing';
-        const flicker = firing ? 1 : 0.4 + 0.4 * Math.abs(Math.sin(this.wobble * 5));
+        const flicker = firing ? 1 : 0.35 + 0.35 * Math.abs(Math.sin(this.wobble * 6));
+        const width = right;
 
         ctx.save();
-        ctx.globalAlpha = (firing ? 0.7 : 0.15) * flicker;
+        ctx.globalAlpha = (firing ? 0.55 : 0.12) * flicker;
         ctx.fillStyle = '#e11d48';
-        ctx.fillRect(bx, by, bw, bh);
-        ctx.globalAlpha = firing ? 1 : 0.35 * flicker;
+        ctx.fillRect(0, y - 3, width, 12);
+        ctx.globalAlpha = (firing ? 1 : 0.35) * flicker;
         ctx.fillStyle = '#fecdd3';
-        if (top) {
-            ctx.fillRect(bx, by + bh - 4, bw, 4);
-        } else {
-            ctx.fillRect(bx, by, bw, 4);
-        }
+        ctx.fillRect(0, y + 1, width, 4);
         ctx.restore();
     }
 }

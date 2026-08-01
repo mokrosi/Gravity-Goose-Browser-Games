@@ -352,6 +352,14 @@ class Player extends Entity {
         }
     }
 
+    // Is the center of `rect` within `radius` px of this entity's center?
+    // (Used by the Level Devil fake-crumb trigger, which erupts at 60px.)
+    near(rect, radius) {
+        const cx = this.x + this.width / 2 - (rect.x + rect.width / 2);
+        const cy = this.y + this.height / 2 - (rect.y + rect.height / 2);
+        return Math.hypot(cx, cy) <= radius;
+    }
+
     static clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
     }

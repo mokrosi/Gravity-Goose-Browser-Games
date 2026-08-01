@@ -86,23 +86,115 @@ a {
     letter-spacing: 2px;
 }
 
+/* Minimalist icon-based HUD (top bar) */
 #hud {
     display: flex;
-    flex-wrap: wrap;
-    gap: 14px 18px;
-    font-size: 12px;
-    color: var(--neon-yellow);
-    text-shadow: 2px 2px 0px #000;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-light);
+    text-shadow: 1px 1px 0 #000;
 }
 
 #hud.hidden {
     display: none;
 }
 
-.hud-item {
+.hud-row {
     display: flex;
     align-items: center;
+    gap: 14px;
+}
+
+.hud-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.hud-ico {
+    font-size: 13px;
+    line-height: 1;
+}
+
+#hud-lives {
+    color: #fb7185;
+    letter-spacing: 2px;
+}
+
+.hud-level-badge {
+    color: var(--neon-yellow);
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+/* Twin ability cooldown bars anchored under the icon row */
+.hud-bars {
+    display: flex;
     gap: 8px;
+    align-items: center;
+}
+
+.hud-bar {
+    width: 90px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.hud-bar.hidden {
+    display: none;
+}
+
+.hud-bar-fill {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: 2px;
+    transition: width 0.12s ease;
+}
+
+.hud-bar-fill.flip {
+    background: linear-gradient(90deg, #a855f7, #e879f9);
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.8);
+}
+
+.hud-bar-fill.blink {
+    background: linear-gradient(90deg, #06b6d4, #22d3ee);
+    box-shadow: 0 0 6px rgba(6, 182, 212, 0.8);
+}
+
+.hud-bar-fill.empty {
+    width: 0% !important;
+    background: #334155;
+    box-shadow: none;
+}
+
+/* Boss-switch tracker (Level 20 only) */
+.hud-boss-item {
+    color: #f43f5e;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+.hud-boss-item.hidden {
+    display: none;
+}
+
+#hud-boss {
+    color: #f43f5e;
+    letter-spacing: 2px;
+}
+
+/* Ghost-run delta vs best time (hidden entirely on mobile) */
+.hud-delta {
+    font-size: 9px;
+    color: #94a3b8;
 }
 
 /* Canvas Box */
@@ -127,75 +219,34 @@ a {
     image-rendering: pixelated;
 }
 
-/* Instant-respawn glitch flash overlay (purely CSS-driven) */
+/* Instant-respawn death effect: a subtle red vignette that fades out.
+   (No bright white flash — eye-strain-free.) The quick screen shake is
+   triggered by Game.screenShake() alongside this overlay. */
 #flash-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: #ffffff;
+    background: radial-gradient(ellipse at center, rgba(127, 29, 29, 0) 52%, rgba(127, 29, 29, 0.85) 100%);
+    box-shadow: inset 0 0 60px 12px rgba(220, 38, 38, 0.55);
     opacity: 0;
     pointer-events: none;
     z-index: 3;
 }
 
 #flash-overlay.reset {
-    animation: resetGlitch 0.16s steps(3, end) forwards;
+    animation: deathVignette 0.55s ease-out forwards;
 }
 
-@keyframes resetGlitch {
-    0%   { opacity: 0.85; transform: translateX(0); }
-    35%  { opacity: 0.6;  transform: translateX(-5px); }
-    70%  { opacity: 0.8;  transform: translateX(3px); }
-    100% { opacity: 0;    transform: translateX(0); }
+@keyframes deathVignette {
+    0%   { opacity: 1; }
+    60%  { opacity: 0.5; }
+    100% { opacity: 0; }
 }
 
-/* Gravity-flip stamina bar (Levels 6-10) */
-#hud-flip-item {
-    align-items: center;
-    gap: 6px;
-}
-
-#hud-flip-item.hidden {
-    display: none;
-}
-
-/* Boss-overload switch tracker (Level 15 only) */
-#hud-boss-item.hidden {
-    display: none;
-}
-
-#hud-boss {
-    color: #f43f5e;
-    text-shadow: 2px 2px 0px #000, 0 0 8px #f43f5e;
-    letter-spacing: 2px;
-}
-
-.flip-bar {
-    width: 46px;
-    height: 8px;
-    border: 1px solid rgba(168, 85, 247, 0.6);
-    border-radius: 3px;
-    background: rgba(30, 27, 75, 0.8);
-    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
-}
-
-.flip-bar-fill {
-    height: 100%;
-    width: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #a855f7, #c084fc);
-    box-shadow: 0 0 6px rgba(168, 85, 247, 0.8);
-    transition: width 0.12s ease;
-}
-
-.flip-bar-fill.empty {
-    width: 0%;
-    background: #334155;
-    box-shadow: none;
-}
+/* Gravity-flip stamina bar lives inside #hud (see .hud-bar above) */
+/* Boss-overload switch tracker (Level 20 only) */
 
 /* New Best Time pulse */
 @keyframes bestPulse {
@@ -265,6 +316,13 @@ a {
     font-size: 18px;
     color: var(--neon-pink);
     text-shadow: 2px 2px 0 #000, 0 0 14px var(--neon-pink);
+}
+
+/* Level Devil troll alerts ("FAKE!", "TRAP!") */
+.float-text.trap {
+    font-size: 16px;
+    color: #f87171;
+    text-shadow: 2px 2px 0 #000, 0 0 14px #ef4444;
 }
 
 @keyframes floatUp {
@@ -795,6 +853,8 @@ body.touch-device #touch-controls.hidden {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 75px;
+    min-height: 75px;
     width: 76px;
     height: 76px;
     border-radius: 50%;
@@ -850,17 +910,32 @@ body.touch-device #touch-controls.hidden {
     gap: 16px;
 }
 
-/* Action cluster (Jump is the big button) */
+/* Action cluster — classic console layout:
+   [ FLIP ]
+   [BLINK][JUMP]
+   Jump sits bottom-right (the big button), Blink directly to its left and
+   Flip directly above Jump. */
 .touch-zone-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-areas:
+        "flip flip"
+        "blink jump";
+    grid-template-columns: auto auto;
+    grid-template-rows: auto auto;
+    align-items: end;
+    justify-items: center;
     gap: 12px;
 }
+
+#btn-touch-flip { grid-area: flip; }
+#btn-touch-blink { grid-area: blink; }
+#btn-touch-jump { grid-area: jump; }
 
 .touch-jump {
     width: 92px;
     height: 92px;
+    min-width: 92px;
+    min-height: 92px;
 }
 
 .touch-pause {
@@ -920,6 +995,15 @@ body.touch-device #touch-controls.hidden {
         object-fit: contain;
         transform: scale(1.35) translateX(4%);
         transform-origin: top center;
+    }
+    /* Level 20's single-screen boss arena must NOT be zoomed past the
+       viewport edges, or the corner switches get clipped off-screen. */
+    body.boss-level #game-canvas {
+        transform: none;
+    }
+    /* The ghost-run delta is desktop-only clutter on small screens. */
+    .hud-delta {
+        display: none !important;
     }
     .touch-zone-left {
         left: 10px;

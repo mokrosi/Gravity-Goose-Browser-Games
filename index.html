@@ -51,15 +51,19 @@
         <div id="arcade-header">
             <div class="arcade-title">GRAVITY GOOSE</div>
             <div id="hud" class="hidden">
-                <div class="hud-item">LEVEL <span id="hud-level">1</span></div>
-                <div class="hud-item">TIME <span id="hud-time">00:00:000</span></div>
-                <div class="hud-item" id="hud-ghost-item">DELTA <span id="hud-ghost-delta">—</span></div>
-                <div class="hud-item">BREAD 🍞 <span id="hud-score">0</span></div>
-                <div class="hud-item">CRUMBS <span id="hud-crumbs">0/0</span></div>
-                <div class="hud-item">BLINK <span id="hud-dash">READY</span></div>
-                <div class="hud-item" id="hud-flip-item">FLIP <div class="flip-bar"><div class="flip-bar-fill" id="hud-flip-fill"></div></div></div>
-                <div class="hud-item" id="hud-boss-item">BOSS <span id="hud-boss"></span></div>
-                <div class="hud-item"><span id="hud-lives">❤️❤️❤️</span></div>
+                <div class="hud-row">
+                    <span class="hud-item hud-level-badge">LV<span id="hud-level">1</span></span>
+                    <span class="hud-item" id="hud-lives" aria-label="Lives">❤❤❤</span>
+                    <span class="hud-item" title="Bread"><span class="hud-ico" aria-hidden="true">🍞</span><span id="hud-score">0</span></span>
+                    <span class="hud-item" title="Golden Breadcrumbs"><span class="hud-ico" aria-hidden="true">✨</span><span id="hud-crumbs">0/0</span></span>
+                    <span class="hud-item" title="Time"><span class="hud-ico" aria-hidden="true">⏱</span><span id="hud-time">00:00:000</span></span>
+                </div>
+                <div class="hud-bars" title="Ability cooldowns">
+                    <div class="hud-bar" id="hud-flip-item" title="Gravity flip"><span class="hud-bar-fill flip" id="hud-flip-fill"></span></div>
+                    <div class="hud-bar" title="Blink"><span class="hud-bar-fill blink" id="hud-blink-fill"></span></div>
+                </div>
+                <div class="hud-row hud-delta" title="Ghost delta"><span class="hud-ico" aria-hidden="true">⛓</span><span id="hud-ghost-delta">—</span></div>
+                <span class="hud-item hud-boss-item" id="hud-boss-item" title="Boss switches">☠ <span id="hud-boss"></span></span>
             </div>
         </div>
 
@@ -192,8 +196,8 @@
                     </div>
                 </div>
                 <div class="touch-zone touch-zone-right">
-                    <button class="touch-btn" id="btn-touch-blink" aria-label="Blink dash"></button>
                     <button class="touch-btn" id="btn-touch-flip" aria-label="Flip gravity"></button>
+                    <button class="touch-btn" id="btn-touch-blink" aria-label="Blink dash"></button>
                     <button class="touch-btn touch-jump" id="btn-touch-jump" aria-label="Jump"></button>
                 </div>
             </div>

@@ -30,7 +30,7 @@ class Game {
         this.lives = 3;
         this.currentLevel = 0;
 
-        // Level 15 boss-fight state: after all 3 switches are hit the boss
+        // Level 20 boss-fight state: after all 4 switches are hit the boss
         // plays a dying animation before the Final Victory screen appears.
         this.bossDeathTimer = 0;
         this.bossVictoryShown = false;
@@ -56,9 +56,8 @@ class Game {
 
         // Cached HUD element updated every frame
         this.hudTimeEl = document.getElementById('hud-time');
-        this.hudDashEl = document.getElementById('hud-dash');
-        this.hudFlipItemEl = document.getElementById('hud-flip-item');
         this.hudFlipFillEl = document.getElementById('hud-flip-fill');
+        this.hudBlinkFillEl = document.getElementById('hud-blink-fill');
         this.hudBossItemEl = document.getElementById('hud-boss-item');
         this.hudBossEl = document.getElementById('hud-boss');
 
@@ -242,6 +241,11 @@ class Game {
             this.player = this.createPlayer();
             this.bossDeathTimer = 0;
             this.bossVictoryShown = false;
+            // Level 20 is a single-screen boss arena: the camera never scrolls.
+            this.camera.locked = (this.currentLevel === 19);
+            // Let CSS strip the mobile zoom-in hack on the boss arena so the
+            // corner switches stay on screen.
+            document.body.classList.toggle('boss-level', this.currentLevel === 19);
             this.camera.snap(
                 this.player,
                 this.levelManager.width * this.levelManager.tileSize,
@@ -321,7 +325,7 @@ class Game {
         this.loadLevel();
     }
 
-    // All three overload switches are down: the boss dies, then the Final
+    // All four overload switches are down: the boss dies, then the Final
     // Victory screen rolls in after the short dying animation.
     defeatBoss() {
         const boss = this.levelManager.boss;
@@ -418,7 +422,7 @@ class Game {
         document.getElementById('hud-crumbs').innerText = `${this.crumbCollected}/${this.crumbTotal}`;
         document.getElementById('hud-lives').innerText = '❤️'.repeat(this.lives);
 
-        // Boss-fight overload tracker (only visible on the Level 15 arena).
+        // Boss-fight overload tracker (only visible on the Level 20 arena).
         const boss = this.levelManager.boss;
         if (this.hudBossItemEl) {
             this.hudBossItemEl.classList.toggle('hidden', !boss || boss.isDefeated);
@@ -490,15 +494,18 @@ class Game {
                 deltaEl.style.color = 'inherit';
             }
         }
-        if (this.hudDashEl) {
-            this.hudDashEl.innerText = this.player.canBlink
-                ? 'READY'
-                : this.player.blinkCooldown.toFixed(1);
+
+        // Blink cooldown bar: fills back up as the blink recharges.
+        if (this.hudBlinkFillEl) {
+            const ratio = 1 - (this.player.blinkCooldown / Player.BLINK_COOLDOWN);
+            this.hudBlinkFillEl.style.width = Math.round(Player.clamp(ratio, 0, 1) * 100) + '%';
+            this.hudBlinkFillEl.classList.toggle('empty', !this.player.canBlink);
         }
 
         // Gravity-flip stamina bar: only meaningful in Levels 6-10 (flip limit).
-        if (this.hudFlipItemEl) {
-            this.hudFlipItemEl.classList.toggle('hidden', !this.levelManager.flipLimit);
+        const flipBar = document.getElementById('hud-flip-item');
+        if (flipBar) {
+            flipBar.classList.toggle('hidden', !this.levelManager.flipLimit);
         }
         if (this.hudFlipFillEl) {
             this.hudFlipFillEl.classList.toggle('empty', !this.player.canFlip);
@@ -536,6 +543,30 @@ class Game {
             laser.update(dt);
         }
 
+        // ---- Level Devil troll traps (Levels 14-19) ----
+        // Fake golden crumbs erupt into spikes once the goose gets within 60px.
+        for (const fc of this.levelManager.fakeCrumbs) {
+            if (fc.triggered) continue;
+            if (this.player.near(fc, 60)) {
+                this.levelManager.triggerFake(fc);
+                this.soundManager.playHurt();
+                this.particleSystem.emitHurt(fc.x + fc.width / 2, fc.y + fc.height / 2);
+                this.spawnFloatText('FAKE!', fc.x + fc.width / 2, fc.y - 10, 'trap');
+                this.screenShake();
+            }
+        }
+        // Invisible trigger zones: entering one drops its spike trap instantly.
+        for (const zone of this.levelManager.trapZones) {
+            if (zone.triggered) continue;
+            if (Physics.checkCollision(this.player, zone)) {
+                this.levelManager.triggerTrap(zone);
+                this.soundManager.playReset();
+                this.particleSystem.emitHurt(zone.x + zone.width / 2, zone.y + zone.height / 2);
+                this.spawnFloatText('TRAP!', zone.x + zone.width / 2, zone.y - 10, 'trap');
+                this.screenShake();
+            }
+        }
+
         // Check Spike Hazard collisions (forgiving 15%-shrunk hitboxes; blink i-frames protect)
         if (!this.player.isInvincible) {
             for (let hazard of this.levelManager.hazards) {
@@ -554,7 +585,7 @@ class Game {
                 }
             }
 
-            // Level 15 boss: full-width top/bottom half-arena beams while firing.
+            // Level 20 boss: horizontal laser aimed at the goose's altitude.
             const boss = this.levelManager.boss;
             if (boss) {
                 const beam = boss.firingBeam(this.levelManager.width * this.levelManager.tileSize);
@@ -584,7 +615,7 @@ class Game {
                 document.getElementById('hud').classList.add('hidden');
                 this.touchControls.hide();
             } else {
-                // Instant respawn: reset position, level timer and breadcrumbs.
+                // Instant respawn: reset position, level timer, breadcrumbs and traps.
                 this.player = this.createPlayer();
                 this.camera.snap(
                     this.player,
@@ -597,6 +628,7 @@ class Game {
                 }
                 this.levelManager.resetCrumbs();
                 this.levelManager.resetCrumbles();
+                this.levelManager.resetTraps();
                 this.totalCrumbCollected -= this.crumbCollected;
                 this.crumbCollected = 0;
                 this.ghost.startRecording(); // keep the replay in sync with the reset timer
@@ -617,7 +649,7 @@ class Game {
             }
         }
 
-        // Level 15 boss: attack cycle, overload switches, death sequence.
+        // Level 20 boss: attack cycle, overload switches, death sequence.
         const boss = this.levelManager.boss;
         if (boss && boss.isDefeated) {
             this.bossDeathTimer -= dt;
@@ -636,9 +668,9 @@ class Game {
                 return;
             }
         } else if (boss) {
-            boss.update(dt, this.levelManager);
+            boss.update(dt, this.levelManager, this.player);
 
-            // Overload switches: touching one staggers the boss; all 3 kill it.
+            // Overload switches: touching one staggers the boss; all 4 kill it.
             let allActivated = true;
             for (let sw of this.levelManager.switches) {
                 if (sw.activated) continue;

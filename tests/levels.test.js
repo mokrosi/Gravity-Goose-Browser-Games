@@ -1,10 +1,11 @@
 /*
  * Headless level-data test suite (Node.js, no DOM required).
  *
- * Validates all 15 level matrices (rectangular rows, solid borders, one
+ * Validates all 20 level matrices (rectangular rows, solid borders, one
  * player start and one bread per level) and the LevelManager loading logic:
  * retro/sunset/cyberpunk themes, forced-gravity zones, crumbling platforms,
- * moving lasers, the Level 6+ flip-limit rule and the Level 15 boss arena.
+ * moving lasers, the Level 6+ flip-limit rule, the Level Devil troll traps
+ * ('F' fake crumbs + 'T' trigger zones) and the Level 20 boss arena.
  * Run with:  node tests/levels.test.js
  */
 const path = require('path');
@@ -42,8 +43,8 @@ console.log('--- Level tests ---');
 
 const lm = new LevelManager();
 
-// 1. Fifteen levels
-assert(lm.levels.length === 15, 'exactly 15 levels');
+// 1. Twenty levels
+assert(lm.levels.length === 20, 'exactly 20 levels');
 
 // 2. Every matrix is a solid rectangle with a solid border and valid chars
 for (let i = 0; i < lm.levels.length; i++) {
@@ -62,7 +63,7 @@ for (let i = 0; i < lm.levels.length; i++) {
     assert(/^#+$/.test(layout[layout.length - 1]), `L${i + 1} bottom row all solid`);
     layout.forEach((row, r) => {
         assert(row[0] === '#' && row[row.length - 1] === '#', `L${i + 1} row ${r} has solid side walls`);
-        assert(/^[#^PBcEzCS. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
+        assert(/^[#^PBcEzCSFT. ]+$/.test(row), `L${i + 1} row ${r} only uses known tiles`);
     });
 }
 
@@ -83,8 +84,8 @@ for (let i = 5; i < 10; i++) {
     assert(lm.hazards.length > 0, `L${i + 1} contains spike hazards`);
 }
 
-// 5. Levels 11-14: cyberpunk theme, crumbling platforms + moving lasers
-for (let i = 10; i < 14; i++) {
+// 5. Levels 11-13: cyberpunk theme, crumbling platforms + moving lasers
+for (let i = 10; i < 13; i++) {
     lm.loadLevel(i);
     assert(lm.theme === 'cyberpunk', `L${i + 1} uses the cyberpunk theme`);
     assert(lm.flipLimit === true, `L${i + 1} enforces the flip limit`);
@@ -94,24 +95,41 @@ for (let i = 10; i < 14; i++) {
     assert(lm.entities.length > 0, `L${i + 1} contains patrolling enemies`);
 }
 
-// 6. Level 15: cyberpunk boss arena with exactly 3 overload switches
-{
-    lm.loadLevel(14);
-    assert(lm.theme === 'cyberpunk', 'L15 uses the cyberpunk theme');
-    assert(lm.isBossLevel === true, 'L15 is a boss level');
-    assert(lm.boss !== null, 'L15 loads a boss');
-    assert(lm.switches.length === 3, 'L15 has exactly 3 overload switches');
-    assert(lm.boss.x >= 0 && lm.boss.y >= 0, 'L15 boss has a valid spawn');
+// 6. Levels 14-19: Level Devil troll gauntlets with fake crumbs + trigger traps
+for (let i = 13; i < 19; i++) {
+    lm.loadLevel(i);
+    assert(lm.theme === 'cyberpunk', `L${i + 1} uses the cyberpunk theme`);
+    assert(lm.flipLimit === true, `L${i + 1} enforces the flip limit`);
+    assert(lm.fakeCrumbs.length > 0, `L${i + 1} contains fake crumbs ('F')`);
+    assert(lm.trapZones.length > 0, `L${i + 1} contains trigger zones ('T')`);
+    assert(lm.entities.length > 0, `L${i + 1} contains patrolling enemies`);
+    assert(lm.hazards.length > 0, `L${i + 1} contains spike hazards`);
+    assert(lm.isBossLevel === false, `L${i + 1} is not a boss level`);
+    assert(lm.switches.length === 0, `L${i + 1} has no boss switches`);
 }
 
-// 7. Every level loads exactly one bread and a valid player start
-for (let i = 0; i < 15; i++) {
+// 7. Level 20: single-screen boss arena with exactly 4 corner switches
+{
+    lm.loadLevel(19);
+    assert(lm.theme === 'cyberpunk', 'L20 uses the cyberpunk theme');
+    assert(lm.isBossLevel === true, 'L20 is a boss level');
+    assert(lm.boss !== null, 'L20 loads a boss');
+    assert(lm.switches.length === 4, 'L20 has exactly 4 overload switches');
+    assert(lm.boss.x >= 0 && lm.boss.y >= 0, 'L20 boss has a valid spawn');
+    assert(lm.width * lm.tileSize <= 25 * 32, 'L20 arena fits a phone-width viewport');
+    assert(lm.trapZones.length === 0 && lm.fakeCrumbs.length === 0, 'L20 has no troll traps');
+    const corners = lm.switches.map(s => `${Math.round(s.x / 32)},${Math.round(s.y / 32)}`).sort();
+    assert(corners[0] === '1,1' && corners[3] === '23,13', 'L20 switches sit in the arena corners');
+}
+
+// 8. Every level loads exactly one bread and a valid player start
+for (let i = 0; i < 20; i++) {
     lm.loadLevel(i);
     assert(lm.items.length === 1, `L${i + 1} loads exactly one bread item`);
     assert(lm.playerStart.x >= 0 && lm.playerStart.y >= 0, `L${i + 1} has a player start`);
 }
 
-// 8. Crumbling platforms: tremble while stood on, break, and reset
+// 9. Crumbling platforms: tremble while stood on, break, and reset
 {
     const layout = [
         '################',
@@ -149,7 +167,7 @@ for (let i = 0; i < 15; i++) {
     lm.levels.pop();
 }
 
-// 9. Moving lasers patrol between their min/max bounds
+// 10. Moving lasers patrol between their min/max bounds
 {
     const laser = new Laser(100, 100, 10, 60, 'y', 100, 300, 100);
     laser.update(0.5);
@@ -158,12 +176,54 @@ for (let i = 0; i < 15; i++) {
     assert(laser.y >= 100 && laser.y + laser.height <= 300, 'beam stays inside its y-range');
 }
 
-// 10. Boss attack cycle alternates top/bottom half-arena beams
+// 11. Fake crumbs: dormant near a real crumb look-alike, erupt into spikes
+//     once the goose gets within 60px.
 {
-    const boss = new Boss(128, 384, 640);
+    lm.loadLevel(13);
+    const fc = lm.fakeCrumbs[0];
+    assert(fc && fc.triggered === false, 'fake crumb loads dormant');
+
+    const far = new Player(fc.x - 300, fc.y);
+    assert(far.near(fc, 60) === false, '60px trigger does not fire from afar');
+
+    const close = new Player(fc.x + 8, fc.y);
+    assert(close.near(fc, 60) === true, 'proximity trigger fires within 60px');
+
+    const before = lm.hazards.length;
+    lm.triggerFake(fc);
+    assert(fc.triggered === true, 'fake crumb triggers');
+    assert(lm.hazards.length === before + 1, 'triggered crumb spawns a spike hazard');
+    assert(lm.droppedHazards.length === 1, 'spawned spike is tracked for drawing');
+    lm.resetTraps();
+    assert(fc.triggered === false, 'reset re-arms the fake crumb');
+    assert(lm.hazards.length === before, 'reset removes the spawned spike');
+}
+
+// 12. Trigger zones: entering one drops its configured spike traps instantly
+{
+    lm.loadLevel(13);
+    const zone = lm.trapZones[0];
+    assert(zone && zone.drops.length > 0, 'trigger zone carries configured drops');
+
+    const before = lm.hazards.length;
+    lm.triggerTrap(zone);
+    assert(zone.triggered === true, 'trigger zone fires');
+    assert(lm.hazards.length === before + zone.drops.length, 'all configured traps drop');
+    assert(lm.droppedHazards.length === zone.drops.length, 'dropped traps are tracked');
+    lm.resetTraps();
+    assert(zone.triggered === false, 'reset re-arms the trigger zone');
+    assert(lm.hazards.length === before, 'reset removes the dropped traps');
+}
+
+// 13. Boss attack cycle: telegraph locks the aim to the goose's altitude and
+//     the firing beam is a horizontal laser at that exact height.
+{
+    lm.loadLevel(19);
+    const boss = lm.boss;
+    const goose = { y: 160, height: 28, x: 200, width: 28 };
     let fired = false;
     for (let i = 0; i < 400; i++) {
-        boss.update(1 / 60, lm);
+        boss.update(1 / 60, lm, goose);
         if (boss.state === 'firing') {
             fired = true;
             break;
@@ -171,21 +231,32 @@ for (let i = 0; i < 15; i++) {
     }
     assert(fired, 'boss reaches the firing state');
     assert(boss.state === 'firing', 'boss enters the firing state');
-    const beam = boss.firingBeam(60 * 32);
+    const beam = boss.firingBeam(25 * 32);
     assert(beam !== null, 'firing beam is active');
     if (beam) {
-        assert(beam.height === 320, 'top beam covers exactly the top half');
+        assert(Math.abs(beam.y + beam.height / 2 - (goose.y + goose.height / 2)) < 1,
+            'beam is aimed at the goose altitude');
+        assert(beam.x === 0 && beam.y >= 0, 'beam spans from the left wall');
+        assert(beam.width + beam.height > 0, 'beam has positive size');
     }
-    // Let it cycle around and confirm the next shot fires on the bottom half.
-    let bottomSeen = false;
-    for (let i = 0; i < 500; i++) {
-        boss.update(1 / 60, lm);
-        if (boss.side === 'bottom' && boss.state === 'firing') {
-            bottomSeen = true;
-            break;
-        }
+    // The beam disappears once the shot ends.
+    for (let i = 0; i < 60 && boss.state === 'firing'; i++) {
+        boss.update(1 / 60, lm, goose);
     }
-    assert(bottomSeen, 'next attack fires on the bottom half');
+    assert(boss.state !== 'firing', 'firing state ends');
+    assert(boss.firingBeam(25 * 32) === null, 'beam is null outside the firing state');
+}
+
+// 14. Boss overload: every switch press adds a hit; defeat enters the death
+//     sequence and the death timer runs down.
+{
+    const boss = new Boss(600, 200, 480);
+    for (let i = 0; i < 4; i++) boss.hit();
+    assert(boss.hits === 4, 'four switches land four hits');
+    boss.defeat();
+    assert(boss.isDefeated === true, 'defeat kills the boss');
+    boss.update(1 / 60, lm, { y: 200, height: 28 });
+    assert(boss.timer < Boss.DEATH_TIME, 'death sequence counts down');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

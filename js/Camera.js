@@ -10,6 +10,9 @@ class Camera {
         // can see obstacles before it runs into them.
         this.lookaheadTime = 0.18;   // seconds of velocity to lead
         this.lookaheadMax = 90;      // hard cap on the lead distance (px)
+        // Level 20's single-screen boss arena: when true the camera is
+        // permanently centered on the level, so nothing ever scrolls away.
+        this.locked = false;
     }
 
     static lerp(a, b, t) {
@@ -17,6 +20,11 @@ class Camera {
     }
 
     follow(target, levelWidth, levelHeight) {
+        if (this.locked) {
+            this._lockCenter(levelWidth, levelHeight);
+            return;
+        }
+
         const lead = target.vx * this.lookaheadTime;
         const leadClamped = Math.max(-this.lookaheadMax, Math.min(this.lookaheadMax, lead));
 
@@ -32,6 +40,11 @@ class Camera {
 
     // Stable vertical framing for boss fights to prevent vertical motion sickness on mobile screens.
     followBossArena(target, levelWidth, levelHeight) {
+        if (this.locked) {
+            this._lockCenter(levelWidth, levelHeight);
+            return;
+        }
+
         const lead = target.vx * this.lookaheadTime;
         const leadClamped = Math.max(-this.lookaheadMax, Math.min(this.lookaheadMax, lead));
 
@@ -47,8 +60,20 @@ class Camera {
     // Instantly center on a target (used on level load / respawn so the
     // camera doesn't sweep across the level).
     snap(target, levelWidth, levelHeight) {
+        if (this.locked) {
+            this._lockCenter(levelWidth, levelHeight);
+            return;
+        }
         this.x = target.x + target.width / 2 - this.width / 2;
         this.y = target.y + target.height / 2 - this.height / 2;
+        this._clamp(levelWidth, levelHeight);
+    }
+
+    // Locked mode: pin the camera to the exact center of the level. Clamped
+    // so small arenas (Level 20's 25x15) still fit the full viewport.
+    _lockCenter(levelWidth, levelHeight) {
+        this.x = (levelWidth - this.width) / 2;
+        this.y = (levelHeight - this.height) / 2;
         this._clamp(levelWidth, levelHeight);
     }
 

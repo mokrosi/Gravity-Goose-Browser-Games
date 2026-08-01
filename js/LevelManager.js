@@ -13,9 +13,12 @@ class LevelManager {
         this.crumbles = []; // Crumbling platforms ('C'): tremble then break
         this.crumbleMap = new Map(); // tile key "gx,gy" -> crumble entry
         this.brokenGrid = []; // parallel bool grid: true where a platform broke
-        this.switches = []; // Boss-overload switches ('S', Level 15)
+        this.switches = []; // Boss-overload switches ('S', Level 20)
         this.lasers = []; // Moving laser entities (Levels 11-14)
-        this.boss = null; // Level 15 boss fight
+        this.boss = null; // Level 20 boss fight
+        this.fakeCrumbs = []; // 'F' troll crumbs: look like Golden Breadcrumbs, turn deadly
+        this.trapZones = []; // 'T' invisible trigger zones: spawn hidden spike traps
+        this.droppedHazards = []; // spikes spawned at runtime by traps (drawn + reset)
         this.theme = 'retro'; // 'retro' (1-5), 'sunset' (6-10) or 'cyberpunk' (11-15)
         this.playerStart = { x: 50, y: 50 };
 
@@ -50,30 +53,65 @@ class LevelManager {
                 { x: 2240, y: 180, width: 380, height: 10, axis: 'y', min: 160, max: 300, speed: 130 }
             ],
             14: [
-                { x: 600, y: 200, width: 400, height: 10, axis: 'y', min: 160, max: 320, speed: 140 },
-                { x: 1600, y: 200, width: 12, height: 280, axis: 'x', min: 1500, max: 1800, speed: 160 }
+                { x: 480, y: 90, width: 12, height: 200, axis: 'x', min: 450, max: 720, speed: 170 },
+                { x: 1400, y: 60, width: 380, height: 10, axis: 'y', min: 50, max: 240, speed: 150 }
             ],
             15: [
-                { x: 800, y: 180, width: 12, height: 300, axis: 'x', min: 750, max: 1000, speed: 170 },
-                { x: 1800, y: 220, width: 450, height: 10, axis: 'y', min: 180, max: 320, speed: 150 }
+                { x: 900, y: 70, width: 330, height: 10, axis: 'y', min: 50, max: 230, speed: 140 },
+                { x: 1650, y: 80, width: 12, height: 200, axis: 'x', min: 1550, max: 1900, speed: 180 }
             ],
             16: [
-                { x: 550, y: 200, width: 12, height: 280, axis: 'x', min: 500, max: 800, speed: 180 },
-                { x: 1450, y: 190, width: 350, height: 10, axis: 'y', min: 150, max: 300, speed: 160 }
+                { x: 600, y: 60, width: 12, height: 210, axis: 'x', min: 550, max: 900, speed: 190 },
+                { x: 1300, y: 60, width: 400, height: 10, axis: 'y', min: 40, max: 250, speed: 160 }
             ],
             17: [
-                { x: 700, y: 210, width: 400, height: 10, axis: 'y', min: 170, max: 320, speed: 160 },
-                { x: 1900, y: 200, width: 12, height: 300, axis: 'x', min: 1850, max: 2100, speed: 190 }
+                { x: 500, y: 50, width: 12, height: 220, axis: 'x', min: 460, max: 800, speed: 200 },
+                { x: 1500, y: 50, width: 360, height: 10, axis: 'y', min: 40, max: 240, speed: 170 }
             ],
             18: [
-                { x: 650, y: 200, width: 12, height: 260, axis: 'x', min: 600, max: 900, speed: 200 },
-                { x: 1600, y: 180, width: 400, height: 10, axis: 'y', min: 150, max: 300, speed: 170 }
+                { x: 700, y: 60, width: 380, height: 10, axis: 'y', min: 40, max: 250, speed: 160 },
+                { x: 1700, y: 60, width: 12, height: 210, axis: 'x', min: 1650, max: 1950, speed: 200 }
             ]
         };
 
-        // Level 20 boss spawn (world px).
+        // 'T' trigger tiles (Levels 14-19): when the goose enters the trigger
+        // tile, the listed spike rects (px) appear instantly. Tile coords in
+        // tx/ty must match an actual 'T' in the matrix.
+        this.trapConfigs = {
+            13: [
+                { tx: 39, ty: 8, drops: [{ x: 41 * 32, y: 8 * 32, width: 64, height: 32 }] }
+            ],
+            14: [
+                { tx: 23, ty: 8, drops: [{ x: 25 * 32, y: 8 * 32, width: 32, height: 32 }] },
+                { tx: 40, ty: 8, drops: [{ x: 44 * 32, y: 7 * 32, width: 32, height: 32 }, { x: 45 * 32, y: 8 * 32, width: 32, height: 32 }] }
+            ],
+            15: [
+                { tx: 15, ty: 8, drops: [{ x: 18 * 32, y: 7 * 32, width: 96, height: 32 }] },
+                { tx: 34, ty: 8, drops: [{ x: 42 * 32, y: 8 * 32, width: 32, height: 32 }, { x: 45 * 32, y: 6 * 32, width: 32, height: 32 }] }
+            ],
+            16: [
+                { tx: 5, ty: 8, drops: [{ x: 7 * 32, y: 6 * 32, width: 32, height: 32 }] },
+                { tx: 15, ty: 8, drops: [{ x: 17 * 32, y: 8 * 32, width: 96, height: 32 }] },
+                { tx: 25, ty: 8, drops: [{ x: 22 * 32, y: 6 * 32, width: 32, height: 32 }, { x: 26 * 32, y: 8 * 32, width: 32, height: 32 }] },
+                { tx: 36, ty: 8, drops: [{ x: 38 * 32, y: 7 * 32, width: 64, height: 32 }] }
+            ],
+            17: [
+                { tx: 10, ty: 8, drops: [{ x: 13 * 32, y: 7 * 32, width: 64, height: 32 }] },
+                { tx: 20, ty: 8, drops: [{ x: 22 * 32, y: 6 * 32, width: 32, height: 32 }] },
+                { tx: 31, ty: 8, drops: [{ x: 33 * 32, y: 8 * 32, width: 96, height: 32 }] },
+                { tx: 41, ty: 8, drops: [{ x: 43 * 32, y: 7 * 32, width: 32, height: 32 }, { x: 46 * 32, y: 8 * 32, width: 32, height: 32 }] }
+            ],
+            18: [
+                { tx: 8, ty: 8, drops: [{ x: 5 * 32, y: 6 * 32, width: 64, height: 32 }] },
+                { tx: 19, ty: 8, drops: [{ x: 22 * 32, y: 8 * 32, width: 32, height: 32 }] },
+                { tx: 30, ty: 8, drops: [{ x: 28 * 32, y: 5 * 32, width: 32, height: 32 }, { x: 32 * 32, y: 8 * 32, width: 32, height: 32 }] },
+                { tx: 40, ty: 8, drops: [{ x: 44 * 32, y: 7 * 32, width: 64, height: 32 }] }
+            ]
+        };
+
+        // Level 20 boss spawn (world px) — hovers on the right side of the arena.
         this.bossConfigs = {
-            19: { x: 128, y: 384 }
+            19: { x: 632, y: 200 }
         };
 
         // Levels 6-10 introduce the sunset palette, forced-gravity zones ('z')
@@ -260,99 +298,113 @@ class LevelManager {
                 "################       ###############       ###############       #############################",
                 "################################################################################################"
             ],
-            // Level 14: Neon Precinct — the densest gauntlet before the boss
+            // Level 14: Crumb of Doubt — Golden Breadcrumbs sit on crumbling
+            // bridges over spike pits. But some "crumbs" are FAKE ('F')...
+            // and a hidden trigger ('T') drops a spike wall right in front of
+            // the exit bread.
             [
-                "################################################################################################",
-                "#                                                                                              #",
-                "#                                                                                              #",
-                "#             c               c               c               c               c                #",
-                "#                                                                                              #",
-                "#                                                                                          c   #",
-                "#          CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC        B    #",
-                "#                                                                                      ####### #",
-                "#                   c                   c                   c                   c      ####### #",
-                "# P ^^E     ^^^^^   E^^     ^^^^^   E       ^^^^^   E  ^^   ^^^^^   E       ^^^^^  ^^ E        #",
-                "############     ###########     ###########     ###########     ###########     ###############",
-                "################################################################################################"
+                "################################################################",
+                "#      c        F        c        F        c        F      c   #",
+                "#    CCCCCCC  CCCCCCC  CCCCCCC  CCCCCCC  CCCCCCC  CCCCCCC      #",
+                "#    ^^^^^^^  ^^^^^^^  ^^^^^^^  ^^^^^^^  ^^^^^^^  ^^^^^^^      #",
+                "#                                                              #",
+                "#  F      F      F      F      F      F      F      F          #",
+                "#      E        E        E        E        E        E          #",
+                "#  c        F        c        F        c        F        c     #",
+                "#P                                    T        B               #",
+                "################################################################"
             ],
-            // Level 15: Neon Core — crumbling spires & high-frequency lasers
+            // Level 15: Ceiling Crash — the floor looks safe, but invisible
+            // triggers drop spike guillotines from the ceiling mid-stride.
             [
-                "################################################################################################",
-                "#                                                                                              #",
-                "#             c               c               c               c               c                #",
-                "#          CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC        B    #",
-                "#                                                                                      ####### #",
-                "#                   c                   c                   c                   c      ####### #",
-                "# P ^^E     ^^^^^   E^^     ^^^^^   E       ^^^^^   E  ^^   ^^^^^   E       ^^^^^  ^^ E        #",
-                "############     ###########     ###########     ###########     ###########     ###############",
-                "################################################################################################"
+                "################################################################",
+                "#             F          F          F          F               #",
+                "#        CCCCCCC     CCCCCCC     CCCCCCC     CCCCCCC           #",
+                "#   ^^^^         ^^^^         ^^^^         ^^^^                #",
+                "#                                                              #",
+                "#   F     c    F     c    F     c    F     c                   #",
+                "#      E         E         E         E         E               #",
+                "#   F     c    F     c    F     c    F     c                   #",
+                "#P                    T                T        B              #",
+                "################################################################"
             ],
-            // Level 16: Void Rift — gravity zones & crumbling platforms
+            // Level 16: Trust No One — the whole lane is littered with golden
+            // "crumbs". Almost every one of them is a trap.
             [
-                "################################################################################----------------",
-                "#                                                                                              #",
-                "#       c               zzzzzz                c               zzzzzz              c            #",
-                "#   #########        zzzzzzzzzz          #########         zzzzzzzzzz         #########        #",
-                "#                    zzzzzzzzzz                            zzzzzzzzzz                          #",
-                "#             c       zzzzzzzz       c              c       zzzzzzzz       c            B      #",
-                "# P  E     ^^^^^^^                 ^^^^^^^      E        ^^^^^^^                 ^^^^^^^       #",
-                "################################################################################################"
+                "################################################################",
+                "#  F    F    F    F    F    F    F    F    F    F    F    F    #",
+                "#     c          c          c          c          c            #",
+                "#  #####  #####  #####  #####  #####  #####  #####  #####      #",
+                "#                                                              #",
+                "#  F  F  F  F  F  F  F  F  F  F  F  F  F  F  F  F              #",
+                "#     E         E         E         E         E                #",
+                "#  F  F  F  F  F  F  F  F  F  F  F  F  F  F  F  F              #",
+                "#P             T         ^^       T         B    ^^            #",
+                "################################################################"
             ],
-            // Level 17: Laser Fortress — dense laser grid & inverted platforms
+            // Level 17: Spike Rain — trigger zones drop spikes from above while
+            // the breadcrumbs scattered between the pillars deceive you.
             [
-                "################################################################################################",
-                "#                                                                                              #",
-                "#         c                     c                     c                     c                  #",
-                "#     CCCCCCCCC             CCCCCCCCC             CCCCCCCCC             CCCCCCCCC         B    #",
-                "#                                                                                      ####### #",
-                "#                 c                     c                     c                 c      ####### #",
-                "# P   E     ^^^^^^^^^     E       ^^^^^^^^^     E       ^^^^^^^^^     E       ^^^^^^^^^        #",
-                "################################################################################################"
+                "################################################################",
+                "#    F         F         F         F         F         F       #",
+                "#  ^^^^^^    ^^^^^^    ^^^^^^    ^^^^^^    ^^^^^^    ^^^^^^    #",
+                "#  ######    ######    ######    ######    ######    ######    #",
+                "#                                                              #",
+                "#   E    F         E    F         E    F         E    F        #",
+                "#  c    c    c    c    c    c    c    c    c    c    c         #",
+                "# F   F   F   F   F   F   F   F   F   F   F   F   F   F   F    #",
+                "#P   T         T         T          T        B                 #",
+                "################################################################"
             ],
-            // Level 18: Crumbling Void Spire — fast platforming test
+            // Level 18: Guillotine Gauntlet — crumbling platforms over spikes,
+            // plus four hidden traps on the final stretch.
             [
-                "################################################################################################",
-                "#                                                                                              #",
-                "#             c               c               c               c               c                #",
-                "#          CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC         CCCCCCC        B    #",
-                "#                                                                                      ####### #",
-                "# P ^^E     ^^^^^   E^^     ^^^^^   E       ^^^^^   E  ^^   ^^^^^   E       ^^^^^  ^^ E        #",
-                "############     ###########     ###########     ###########     ###########     ###############",
-                "################################################################################################"
+                "################################################################",
+                "#  F    F    F    F    F    F    F    F    F    F    F    F    #",
+                "#     C    C    C    C    C    C    C    C    C    C    C      #",
+                "#  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  ^^^^  #",
+                "#                                                              #",
+                "#   c   F   c   F   c   F   c   F   c   F   c   F   c   F      #",
+                "#      E        E        E        E        E        E          #",
+                "#  F    c    F    c    F    c    F    c    F    c    F    c    #",
+                "#P        T         T          T         T       B             #",
+                "################################################################"
             ],
-            // Level 19: Cyberpunk Perimeter — ultimate test before boss
+            // Level 19: Last Laugh — the final troll gauntlet: gravity zones,
+            // fake crumbs everywhere and traps that cut off your escape route.
             [
-                "################################################################################################",
-                "#                                                                                              #",
-                "#       c               zzzzzz                c               zzzzzz              c            #",
-                "#   #########        zzzzzzzzzz          #########         zzzzzzzzzz         #########   B    #",
-                "#                    zzzzzzzzzz                            zzzzzzzzzz                 #######  #",
-                "# P  E     ^^^^^^^                 ^^^^^^^      E        ^^^^^^^                 ^^^^^^^       #",
-                "################################################################################################"
+                "################################################################",
+                "#   c    F    c    F    c    F    c    F    c    F    c    F   #",
+                "#      zzzz        zzzz        zzzz        zzzz                #",
+                "#   ######  ######  ######  ######  ######  ######  ######     #",
+                "#     ^^^     ^^^     ^^^     ^^^     ^^^                      #",
+                "#   F   F   F   F   F   F   F   F   F   F   F   F   F   F      #",
+                "#      E        E        E        E        E        E          #",
+                "#   F   F   F   F   F   F   F   F   F   F   F   F   F   F      #",
+                "#P      T          T          T         T        B             #",
+                "################################################################"
             ],
-            // Level 20: THE BOSS — mecha overlord guarding the stolen bread
-            // (touch all 3 switches on the right to overload it and win)
+            // Level 20: THE BOSS — single-screen 25x15 arena. The camera is
+            // locked dead-center, so everything is always visible on mobile.
+            // The mecha-alien hovers on the right firing horizontal lasers at
+            // your altitude. Press all 4 switches ('S') in the corners to
+            // overload it and win.
             [
-                "############################################################",
-                "#                                                          #",
-                "#                                                          #",
-                "#                             c                            #",
-                "#                                                     S    #",
-                "#                                                   ########",
-                "#                                                          #",
-                "#                                                          #",
-                "#                                                          #",
-                "#                                                          #",
-                "#                                                          #",
-                "#                                                          #",
-                "#                                                   B S c  #",
-                "#                                                   ########",
-                "#                                                          #",
-                "# P                                                        #",
-                "#  #####                      c                            #",
-                "#  #####                      ##            ##    ##       #",
-                "#  #####                      ##            ##    ##  S    #",
-                "############################################################"
+                "#########################",
+                "#S.....................S#",
+                "#..##....###....###.....#",
+                "#..##....###....###.....#",
+                "#..##....###....###.....#",
+                "#.......................#",
+                "#............B..........#",
+                "#.......................#",
+                "#....####....####.......#",
+                "#.......................#",
+                "#..##....###....###.....#",
+                "#..##....###....###.....#",
+                "#..##....###..P.###.....#",
+                "#S.....................S#",
+                "#########################"
             ]
         ];
     }
@@ -378,6 +430,9 @@ class LevelManager {
         this.switches = [];
         this.lasers = [];
         this.boss = null;
+        this.fakeCrumbs = [];
+        this.trapZones = [];
+        this.droppedHazards = [];
         // 1-5 retro, 6-10 sunset, 11-15 cyberpunk.
         this.theme = index >= 10 ? 'cyberpunk' : (index >= 5 ? 'sunset' : 'retro');
 
@@ -429,8 +484,31 @@ class LevelManager {
                         this.crumbs.push(new Crumb(x * this.tileSize + 6, y * this.tileSize + 6));
                     } else if (char === 'E') {
                         this.entities.push(new Enemy(x * this.tileSize, y * this.tileSize));
+                    } else if (char === 'F') {
+                        // Troll crumb: looks exactly like a Golden Breadcrumb
+                        // until the goose gets within 60px — then it spikes.
+                        this.fakeCrumbs.push({
+                            x: x * this.tileSize + 6,
+                            y: y * this.tileSize + 6,
+                            width: 20,
+                            height: 20,
+                            triggered: false,
+                            twinkle: Math.random() * Math.PI * 2
+                        });
+                    } else if (char === 'T') {
+                        // Invisible trigger zone: walking into it drops a
+                        // nearby spike trap instantly (drops come from
+                        // trapConfigs; default = a spike right below).
+                        this.trapZones.push({
+                            x: x * this.tileSize,
+                            y: y * this.tileSize,
+                            width: this.tileSize,
+                            height: this.tileSize,
+                            triggered: false,
+                            drops: []
+                        });
                     } else if (char === 'S') {
-                        // Boss-overload switch (Level 15): touch it to activate.
+                        // Boss-overload switch (Level 20): touch it to activate.
                         this.switches.push({
                             x: x * this.tileSize + 4,
                             y: y * this.tileSize + 4,
@@ -440,6 +518,23 @@ class LevelManager {
                         });
                     }
                 }
+            }
+        }
+
+        // Attach each 'T' tile's configured trap drops (spikes in px).
+        for (const cfg of (this.trapConfigs[index] || [])) {
+            const zone = this.trapZones.find(z =>
+                Math.floor(z.x / this.tileSize) === cfg.tx &&
+                Math.floor(z.y / this.tileSize) === cfg.ty
+            );
+            if (zone) {
+                zone.drops = cfg.drops.map(d => ({ x: d.x, y: d.y, width: d.width, height: d.height }));
+            }
+        }
+        // Unconfigured 'T' tiles still get a sensible default: a spike below.
+        for (const zone of this.trapZones) {
+            if (zone.drops.length === 0) {
+                zone.drops = [{ x: zone.x, y: zone.y + this.tileSize, width: this.tileSize, height: this.tileSize }];
             }
         }
 
@@ -528,6 +623,43 @@ class LevelManager {
         }
     }
 
+    // ---- Level Devil traps ('F' fake crumbs + 'T' trigger zones) ----
+
+    // A fake crumb has been discovered: it erupts into a deadly spike.
+    triggerFake(crumb) {
+        if (crumb.triggered) return;
+        crumb.triggered = true;
+        const spike = {
+            x: crumb.x - 8,
+            y: crumb.y - 8,
+            width: crumb.width + 16,
+            height: crumb.height + 16,
+            dropped: true
+        };
+        this.hazards.push(spike);
+        this.droppedHazards.push(spike);
+    }
+
+    // A trigger zone was entered: drop every linked spike trap instantly.
+    triggerTrap(zone) {
+        if (zone.triggered) return;
+        zone.triggered = true;
+        for (const d of zone.drops) {
+            const spike = { x: d.x, y: d.y, width: d.width, height: d.height, dropped: true };
+            this.hazards.push(spike);
+            this.droppedHazards.push(spike);
+        }
+    }
+
+    // Instant respawn / retry: re-arm every fake crumb and trigger zone and
+    // remove every spike the traps spawned.
+    resetTraps() {
+        for (const crumb of this.fakeCrumbs) crumb.triggered = false;
+        for (const zone of this.trapZones) zone.triggered = false;
+        this.hazards = this.hazards.filter(h => !h.dropped);
+        this.droppedHazards = [];
+    }
+
     draw(ctx, camera, assetManager) {
         const startX = Math.max(0, Math.floor(camera.x / this.tileSize));
         const endX = Math.min(this.width, Math.ceil((camera.x + camera.width) / this.tileSize));
@@ -571,7 +703,7 @@ class LevelManager {
             }
         }
 
-        // Boss-overload switches (Level 15): neon panels that light up green
+        // Boss-overload switches (Level 20): neon panels that light up green
         // once the goose has touched them.
         if (this.switches.length > 0) {
             ctx.save();
@@ -607,6 +739,67 @@ class LevelManager {
                 ctx.strokeRect(zx + 1, zy + 1, zone.width - 2, zone.height - 2);
             }
             ctx.restore();
+        }
+
+        // Spikes spawned by traps ('T' zones + triggered 'F' crumbs).
+        if (this.droppedHazards.length > 0) {
+            const spikeImg = assetManager.getImage(cyberpunk ? 'spikes_cyberpunk' : (sunset ? 'spikes_sunset' : 'spikes'));
+            for (const hz of this.droppedHazards) {
+                const hx = hz.x - camera.x;
+                const hy = hz.y - camera.y;
+                if (hx + hz.width < 0 || hx > camera.width || hy + hz.height < 0 || hy > camera.height) continue;
+                if (spikeImg) {
+                    ctx.drawImage(spikeImg, hx, hy, hz.width, hz.height);
+                } else {
+                    ctx.fillStyle = '#f87171';
+                    for (let sx = 0; sx < hz.width; sx += 12) {
+                        ctx.beginPath();
+                        ctx.moveTo(hx + sx, hy + hz.height);
+                        ctx.lineTo(hx + sx + 6, hy);
+                        ctx.lineTo(hx + sx + 12, hy + hz.height);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Troll crumbs ('F'): identical to Golden Breadcrumbs while dormant —
+        // once triggered they become the deadly spike they always were.
+        if (this.fakeCrumbs.length > 0) {
+            const crumbImg = assetManager.getImage('crumb');
+            for (const fc of this.fakeCrumbs) {
+                const fx = fc.x - camera.x;
+                const fy = fc.y - camera.y;
+                if (fx + fc.width < 0 || fx > camera.width || fy + fc.height < 0 || fy > camera.height) continue;
+                fc.twinkle += 0.1;
+                if (fc.triggered) {
+                    // Erupted: draw a menacing red spike over the golden glow.
+                    ctx.save();
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy + fc.height);
+                    ctx.lineTo(fx + fc.width / 2, fy - 8);
+                    ctx.lineTo(fx + fc.width, fy + fc.height);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fecaca';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    // Dormant: a perfect, tempting copy of a real crumb.
+                    const glow = 0.5 + Math.sin(fc.twinkle) * 0.25;
+                    ctx.save();
+                    ctx.globalAlpha = 0.3 * glow;
+                    ctx.fillStyle = '#FACC15';
+                    ctx.beginPath();
+                    ctx.arc(fx + fc.width / 2, fy + fc.height / 2, 13 + Math.sin(fc.twinkle) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    if (crumbImg) {
+                        ctx.drawImage(crumbImg, fx - 6, fy - 6, 32, 32);
+                    }
+                }
+            }
         }
     }
 }

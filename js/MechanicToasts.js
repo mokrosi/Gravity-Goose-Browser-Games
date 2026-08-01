@@ -1,7 +1,12 @@
 const MECHANIC_INTROS = {
     5: "GRAVITY FLIP: now limited to once per jump!",
     10: "WARNING: crumbling platforms & moving lasers ahead!",
-    15: "VOID RIFT: intense gravity anomaly detected!",
+    13: "CAUTION: some golden crumbs are not what they seem...",
+    14: "INCOMING: invisible trap triggers!",
+    15: "TRUST NO ONE: fake crumbs everywhere!",
+    16: "WARNING: spike rain & trap triggers!",
+    17: "WARNING: crumbling guillotines & hidden spikes!",
+    18: "LAST LAUGH: gravity zones + troll traps!",
     19: "WARNING: FINAL BOSS INCOMING!"
 };
 
