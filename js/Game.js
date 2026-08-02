@@ -117,10 +117,10 @@ class Game {
         this.hudBossItemEl = document.getElementById('hud-boss-item');
         this.hudBossEl = document.getElementById('hud-boss');
 
-        // Parallax stars
-        this.stars = [];
+        // Parallax stars (drift slowly behind sunset/cyberpunk/mothership/kitchen worlds)
+        this.bgStars = [];
         for (let i = 0; i < 80; i++) {
-            this.stars.push({
+            this.bgStars.push({
                 x: Math.random() * 1600,
                 y: Math.random() * 1200,
                 size: Math.random() > 0.8 ? 2 : 1,
