@@ -50,6 +50,13 @@ jobs:
         with:
           # The game is a static, dependency-free site at the repo root.
           path: .
+          # Unique name per run avoids colliding with stale artifacts left by
+          # cancelled runs (which otherwise breaks deploy-pages with
+          # "Multiple artifacts named github-pages").
+          name: github-pages-${{ github.run_id }}
+          retention-days: 1
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}
